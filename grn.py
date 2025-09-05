@@ -28,9 +28,12 @@ class GRN:
         self.concentrations = np.zeros((self.size))
         self.identifiers = np.zeros((self.size))
         self.inhibiters = np.zeros((self.size))
+        self.enhancers = np.zeros((self.size))
+        self.enh_afinity_matrix = np.zeros((self.size, self.size))
+        self.inh_affinity_matrix = np.zeros((self.size, self.size))
 
-        self.a  = 1
-        self.f = 2
+        self.a  = 0
+        self.f = 1
         self.setup()
 
     def random(self, nin = 1, nout = 1, nreg = 0):
@@ -53,26 +56,27 @@ class GRN:
 
 
     def setup(self):
-        self.enh_afinity_matrix, self.inh_affinity_matrix = compute_proteins_afinity(self.identifiers, self.inhibiters, self.concentrations, self.idsize, self.beta, self.a, self.f)
+        self.enh_afinity_matrix, self.inh_affinity_matrix = compute_proteins_afinity(self.identifiers, self.enhancers, self.inhibiters, self.idsize, self.beta, self.a, self.f)
         self.reset()
 
 
     def __str__(self):
 
-        dict_grn = {
+        self.dict_grn = {
             "nin": self.nin,
             "nout": self.nout,
             "nreg": self.nreg,
-            "be-enh_affinity_matrix) + 1)ta": self.beta,
+            "beta": self.beta,
             "delta": self.delta,
+            "a": self.a,
+            "f": self.f,
             "idsize": self.idsize,
             "identifiers": self.identifiers,
-            "concentrations": self.concentrations,
+            "enhancers" : self.enhancers,
             "inhibiters": self.inhibiters,
-            "a": self.a
         }
 
-        return str(dict_grn)
+        return str(self.dict_grn)
     
 
     def step(self):
@@ -83,6 +87,44 @@ class GRN:
 
     def get_output(self):
         return self.concentrations[self.nin:self.nout+self.nin]
+
+    def from_genome(self, genome):
+        """genome of the grn
+
+        the genome is an array of length 8 + 3 * N
+        with N = nin + nout + nreg
+
+        Args:
+            genome (_type_): [nin, nout, nreg, beta, delta, a, f, idsize, identifiers, enhancers, inhibiters] ]
+                             [intn int,  int,  float, float, int, int, float, float[], float[], float[]]
+                
+
+        Returns:
+            _type_: _description_
+        """
+        self.nin = genome[0]
+        self.nout = genome[1]
+        self.nreg = genome[2]
+        self.beta = genome[3]
+        self.delta = genome[4]
+        self.a = genome[5]
+        self.f = genome[6]
+        self.idsize = genome[7]
+
+        self.size = self.nin + self.nout + self.nreg
+        id_start, id_end = compute_identifiers_genome_start_end_index(self.size)
+        enh_start, enh_end = compute_enhancers_genome_start_end_index(id_end, self.size)
+        inh_start, inh_end = compute_inhibiters_genome_start_end_index(enh_end, self.size)
+
+        self.identifiers = genome[id_start:id_end]
+        self.enhancers = genome[enh_start:enh_end]
+        self.inhibiters = genome[inh_start:inh_end]
+
+        self.setup()
+
+
+
+
 
 
 @jit(nopython=True)
@@ -105,18 +147,18 @@ def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, no
             next_concentrations[i] =  max(0.0, concentrations[i] + dt * dci)
             # sum_concentration += next_concentrations[i]
 
-        next_concentrations = next_concentrations / sum(next_concentrations)
+        # next_concentrations = next_concentrations / sum(next_concentrations)
         # next_concentrations = next_concentrations / sum_concentration
         # next_concentrations = concentrations + delta * (np.dot(enh_afinity_matrix, concentrations) - np.dot(inh_affinity_matrix, concentrations))
         # print("sum concentration", sum_concentration)
-        # if sum_concentration > 0.0:
-        #     next_concentrations = next_concentrations / sum_concentration
+        if sum_concentration > 0.0:
+            next_concentrations = next_concentrations / sum_concentration
 
 
     return next_concentrations
 
 @jit
-def compute_proteins_afinity(identifiers, inhibiters, enhancers, usize, beta, a = 0, f = 0):
+def compute_proteins_afinity(identifiers, enhancers, inhibiters, usize, beta, a = 0, f = 0):
     """compute afinity of all proteins, """
     matrix_size = len(identifiers)
 
@@ -163,3 +205,20 @@ def compute_proteins_afinity(identifiers, inhibiters, enhancers, usize, beta, a 
 
 
     return enh_affinity_matrix, inh_affinity_matrix
+
+
+def compute_identifiers_genome_start_end_index(N):
+    start = 8
+    end = start + N
+    return start, end
+
+def compute_enhancers_genome_start_end_index(identifiers_end, N):
+    start = identifiers_end
+    end = start + N
+    return start, end
+
+def compute_inhibiters_genome_start_end_index(enhancers_end, N):
+    start = enhancers_end
+    end = start + N
+    return start, end
+
