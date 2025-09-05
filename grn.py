@@ -32,7 +32,7 @@ class GRN:
         self.enh_afinity_matrix = np.zeros((self.size, self.size))
         self.inh_affinity_matrix = np.zeros((self.size, self.size))
 
-        self.a  = 0
+        self.a  = 1
         self.f = 1
         self.setup()
 
@@ -147,12 +147,12 @@ def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, no
             next_concentrations[i] =  max(0.0, concentrations[i] + dt * dci)
             # sum_concentration += next_concentrations[i]
 
-        # next_concentrations = next_concentrations / sum(next_concentrations)
+        next_concentrations = next_concentrations / sum(next_concentrations)
         # next_concentrations = next_concentrations / sum_concentration
         # next_concentrations = concentrations + delta * (np.dot(enh_afinity_matrix, concentrations) - np.dot(inh_affinity_matrix, concentrations))
         # print("sum concentration", sum_concentration)
-        if sum_concentration > 0.0:
-            next_concentrations = next_concentrations / sum_concentration
+        # if sum_concentration > 0.0:
+        #     next_concentrations = next_concentrations / sum_concentration
 
 
     return next_concentrations
