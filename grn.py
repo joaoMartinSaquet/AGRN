@@ -45,6 +45,7 @@ class GRN:
 
         self.identifiers = np.random.random((self.nin + self.nout + self.nreg))
         self.inhibiters = np.random.random((self.nin + self.nout + self.nreg))
+        self.enhancers = np.random.random((self.nin + self.nout + self.nreg))
         self.beta = np.random.random() * (self.betamax - self.betamin) + self.betamin
         self.delta = np.random.random() * (self.deltamax - self.deltamin) + self.deltamin
         self.setup()
@@ -56,11 +57,12 @@ class GRN:
 
 
     def setup(self):
+        self.set_genome()
         self.enh_afinity_matrix, self.inh_affinity_matrix = compute_proteins_afinity(self.identifiers, self.enhancers, self.inhibiters, self.idsize, self.beta, self.a, self.f)
         self.reset()
 
-
-    def __str__(self):
+    
+    def set_genome(self):
 
         self.dict_grn = {
             "nin": self.nin,
@@ -76,9 +78,23 @@ class GRN:
             "inhibiters": self.inhibiters,
         }
 
-        return str(self.dict_grn)
-    
+        all_values = []
+        for key, value in self.dict_grn.items():
+            print(key, value)
+            if isinstance(value, np.ndarray):
+                all_values.extend(value.tolist())
+                # print("value : ", value)
+                # for el in value.tolist():  # Handle NumPy arrays
+                    # all_values.extend(el)  # Convert array to list and extend
+            else:  # Handle scalar values
+                all_values.append(value)
 
+        self.genome = all_values
+        return all_values
+    
+    def __str__(self):
+        return str(self.genome)
+    
     def step(self):
         self.concentrations = step(self.enh_afinity_matrix, self.inh_affinity_matrix, self.concentrations, self.delta, self.nin, self.nout, self.dt, self.size)
         
@@ -131,7 +147,7 @@ class GRN:
 def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, nout, dt, nprot):
 
     next_concentrations = np.zeros((nprot), dtype=np.float64)
-    sum_concentration = 0.0
+    # sum_concentration = 0.0
     for i in range(nprot):
         # proteins is an input 
         if i < nin:
@@ -147,6 +163,8 @@ def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, no
             next_concentrations[i] =  max(0.0, concentrations[i] + dt * dci)
             # sum_concentration += next_concentrations[i]
 
+    sum_concentration = np.sum(next_concentrations)
+    if sum_concentration > 0.0:
         next_concentrations = next_concentrations / sum(next_concentrations)
         # next_concentrations = next_concentrations / sum_concentration
         # next_concentrations = concentrations + delta * (np.dot(enh_afinity_matrix, concentrations) - np.dot(inh_affinity_matrix, concentrations))
