@@ -2,55 +2,44 @@ import numba
 import numpy as np
 from numba import jit
 import loguru as logger
+from genome import *
 
 class GRN:
-    def __init__(self):
+
+    dt = 1
+    nin = 1
+    nout = 1
+    nreg = 0
+    idsize = 1.
+    betamin = 0.2
+    betamax = 2
+    deltamin = 0.2
+    deltamax = 2
+    a = 0
+    f = 0
+
+    identifiers = []
+    enhancers = []
+    inhibiters = []
+    concentrations = []
+
+    def __init__(self,):
         """    # the concentrations are organised as follows:
             [nin, nout, nreg] = [x, x, *, R, R, R ] (for 2 input, 1 output and 3 regulators)
         """
-        self.beta = 0
-        self.delta = 0
-        self.idsize = 1
-        
+        self.random(self.nin, self.nout, self.nreg)
 
-        self.betamin = 0.2
-        self.betamax = 2
-        self.deltamin = 0.2
-        self.deltamax = 2
-
-        self.nin = 1
-        self.nout = 1
-        self.nreg = 0
-
-        self.dt = 1
-
-        self.size = self.nin + self.nout + self.nreg
-        self.concentrations = np.zeros((self.size))
-        self.identifiers = np.zeros((self.size))
-        self.inhibiters = np.zeros((self.size))
-        self.enhancers = np.zeros((self.size))
-        self.enh_afinity_matrix = np.zeros((self.size, self.size))
-        self.inh_affinity_matrix = np.zeros((self.size, self.size))
-
-        self.a  = 0
-        self.f = 0
         self.setup()
 
-    def __init__(self, nin = 1, nout = 1, nreg = 0, a = 0, f = 0):
+    def __init__(self, genome, nin = 1, nout = 1):
         """init with random parameters"""
-        self.a = a
-        self.f = f
-        self.beta = 0
-        self.delta = 0
-        self.idsize = 1
-        self.dt = 1
-
-        self.betamin = 0.2
-        self.betamax = 2
-        self.deltamin = 0.2
-        self.deltamax = 2
-        self.random(nin, nout, nreg)
-
+        self.genome = genome
+        self.nin = nin
+        self.nout = nout
+        self.beta, self.delta, self.identifiers, self.enhancers, self.inhibiters, self.nreg = decode_genome(genome, nin, nout)
+        self.size = self.nin + self.nout + self.nreg
+        self.setup()
+        
 
     def random(self, nin = 1, nout = 1, nreg = 0):
 
@@ -63,10 +52,9 @@ class GRN:
         self.inhibiters = np.random.random((self.nin + self.nout + self.nreg))
         self.enhancers = np.random.random((self.nin + self.nout + self.nreg))
         self.beta = np.random.random() * (self.betamax - self.betamin) + self.betamin
-        self.delta = np.random.random() * (self.deltamax - self.deltamin) + self.deltamin
         self.setup()
 
-        return self.genome
+        return encode_genome(self.beta, self.delta, self.identifiers, self.enhancers, self.inhibiters)
     
 
     def reset(self):
@@ -79,17 +67,15 @@ class GRN:
         self.step(nsteps)
 
     def setup(self):
-        self.set_genome()
         self.enh_afinity_matrix, self.inh_affinity_matrix = compute_proteins_afinity(self.identifiers, self.enhancers, self.inhibiters, self.idsize, self.beta, self.a, self.f)
         # print(self.enh_afinity_matrix)
         # print(self.inh_affinity_matrix)
         self.reset()
 
+
     
-    def set_genome(self):
-        """
-        set the genome of the grn as a list
-        """
+    def __str__(self):
+
         self.dict_grn = {
             "nin": self.nin,
             "nout": self.nout,
@@ -104,20 +90,6 @@ class GRN:
             "inhibiters": self.inhibiters,
         }
 
-        all_values = []
-        for key, value in self.dict_grn.items():
-            if isinstance(value, np.ndarray):
-                all_values.extend(value.tolist())
-                # print("value : ", value)
-                # for el in value.tolist():  # Handle NumPy arrays
-                    # all_values.extend(el)  # Convert array to list and extend
-            else:  # Handle scalar values
-                all_values.append(value)
-
-        self.genome = all_values
-        return all_values
-    
-    def __str__(self):
         return str(self.dict_grn)
     
     def step(self, nsteps = 1):
@@ -130,44 +102,6 @@ class GRN:
 
     def get_output(self):
         return self.concentrations[self.nin:self.nout+self.nin].copy()
-
-    def from_genome(self, genome):
-        """genome of the grn
-
-        the genome is an array of length 8 + 3 * N
-        with N = nin + nout + nreg
-
-        Args:
-            genome (_type_): [nin, nout, nreg, beta, delta, a, f, idsize, identifiers, enhancers, inhibiters] ]
-                             [intn int,  int,  float, float, int, int, float, float[], float[], float[]]
-                
-
-        Returns:
-            _type_: _description_
-        """
-        self.nin = genome[0]
-        self.nout = genome[1]
-        self.nreg = genome[2]
-        self.beta = genome[3]
-        self.delta = genome[4]
-        self.a = genome[5]
-        self.f = genome[6]
-        self.idsize = genome[7]
-
-        self.size = self.nin + self.nout + self.nreg
-        id_start, id_end = compute_identifiers_genome_start_end_index(self.size)
-        enh_start, enh_end = compute_enhancers_genome_start_end_index(id_end, self.size)
-        inh_start, inh_end = compute_inhibiters_genome_start_end_index(enh_end, self.size)
-
-        self.identifiers = genome[id_start:id_end]
-        self.enhancers = genome[enh_start:enh_end]
-        self.inhibiters = genome[inh_start:inh_end]
-        self.setup()
-
-
-
-
-
 
 @jit(nopython=True)
 def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, nout, dt, nprot):
@@ -197,18 +131,11 @@ def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, no
             dci = delta * (enhancing_factor - inhibiting_factor)/(nprot)     
             
             next_concentrations[i] = min(1.0,max(0.0, concentrations[i] + dt * dci))            # sum_concentration += next_concentrations[i]
-
-    # sum_concentration = np.sum(next_concentrations[nin:])
-    # if sum_concentration > 0.0:
-    #     next_concentrations[nin:] = next_concentrations[nin:] / sum_concentration
         
-        
-        # next_concentrations = next_concentrations / sum_concentration
-        # next_concentrations = concentrations + delta * (np.dot(enh_afinity_matrix, concentrations) - np.dot(inh_affinity_matrix, concentrations))
-        # print("sum concentration", sum_concentration)
-        # if sum_concentration > 0.0:
-        #     next_concentrations = next_concentrations / sum_concentration
-
+        # # regularization steps 
+        # sum_concentrations = np.sum(next_concentrations[nin:])
+        # if sum_concentrations > 0.0:
+        #     next_concentrations[nin:] = next_concentrations[nin:] / sum_concentrations
 
     return next_concentrations.copy()
 

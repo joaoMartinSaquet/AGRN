@@ -3,31 +3,103 @@ import numpy as np
 import loguru as logger
 
 
+
 class RegressionProblem:
-    def __init__(self,input_features, output_features):
+    def __init__(self,input_features, output_features, nin, nout, nreg):
         self.xtrain = input_features
         self.ytrain = output_features
 
-    def eval(self, genome):
-        g = grn.GRN()
-        g.from_genome(genome)
+        self.nin = nin
+        self.nout = nout
+        self.nreg = nreg
 
+
+
+    def eval(self, genome):
+        # translate the model from the genome
+        
+        g = grn.GRN(genome)
+
+        g.setup()
         ypred = self.run_grn(g)        
-        err = np.linalg.norm(self.ytrain - np.array(ypred))
+        err = np.sum(abs(ypred-self.ytrain))
         if np.isnan(err):
             logger.warning("err is nan") 
-        return -err
+
+        # print("error on problem", err)
+        return -err, ypred
     
     def run_grn(self, grn):
 
         grn.reset()
-        grn.step(25) # warmups
+        grn.warmup(25)
         ypred = []
         N = len(self.xtrain)
 
         for i in range(N):
             grn.set_input(self.xtrain[i])
             grn.step()
-            ypred.append(grn.get_output())
+            ypred.append(grn.get_output().item())
             
         return ypred
+    
+
+class FrenchFlagProblem:
+    def __init__(self, nin, nout, nreg):
+        self.N = 50
+        self.nin = 2
+        self.nout = 3
+        self.nreg = 0
+
+        self.ytrain = self.french_flag(self.N)  
+
+    def eval(self, genome):
+        # translate the model from the genome
+        
+        g = grn.GRN(genome, self.nin, self.nout)
+
+        g.setup()
+        ypred = self.run_grn(g)        
+        err = np.linalg.norm(ypred-self.ytrain)
+        if np.isnan(err):
+            logger.warning("err is nan") 
+
+        # print("error on problem", err)
+        return -err, ypred
+
+    def run_grn(self, g):
+
+        g.reset()
+        g.warmup(25)
+        ypred = np.zeros((self.N,self.N,3))
+
+        for i in range(self.N):
+            for j in range(self.N):
+                g.set_input([i/self.N, j/self.N])
+                g.step()
+                out = g.get_output()
+                ypred[i][j] = out
+            
+        return ypred
+    
+    def french_flag(self, N):
+        """
+        Create a NxNx3 matrix representing the French flag.
+        
+        Blue | White | Red
+        """
+        flag = np.zeros((N, N, 3), dtype=np.uint8)  # RGB uint8 values 0-255
+
+        # Width of each stripe
+        stripe_width = N // 3
+
+        # Blue stripe
+        flag[:, :stripe_width, :] = [0, 85, 164]  # RGB for blue
+
+        # White stripe
+        flag[:, stripe_width:2*stripe_width, :] = [255, 255, 255]
+
+        # Red stripe
+        flag[:, 2*stripe_width:, :] = [239, 65, 53]  # RGB for red
+
+        return flag/255.0
