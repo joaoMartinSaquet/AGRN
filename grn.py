@@ -1,7 +1,7 @@
 import numba
 import numpy as np
 from numba import jit
-
+import loguru as logger
 
 class GRN:
     def __init__(self):
@@ -32,9 +32,25 @@ class GRN:
         self.enh_afinity_matrix = np.zeros((self.size, self.size))
         self.inh_affinity_matrix = np.zeros((self.size, self.size))
 
-        self.a  = 1
-        self.f = 1
+        self.a  = 0
+        self.f = 0
         self.setup()
+
+    def __init__(self, nin = 1, nout = 1, nreg = 0, a = 0, f = 0):
+        """init with random parameters"""
+        self.a = a
+        self.f = f
+        self.beta = 0
+        self.delta = 0
+        self.idsize = 1
+        self.dt = 1
+
+        self.betamin = 0.2
+        self.betamax = 2
+        self.deltamin = 0.2
+        self.deltamax = 2
+        self.random(nin, nout, nreg)
+
 
     def random(self, nin = 1, nout = 1, nreg = 0):
 
@@ -50,20 +66,30 @@ class GRN:
         self.delta = np.random.random() * (self.deltamax - self.deltamin) + self.deltamin
         self.setup()
 
+        return self.genome
+    
+
     def reset(self):
         """reset the concentrations of the grn
         """
-        self.concentrations = 1/(self.nin + self.nout + self.nreg) * np.ones((self.nin + self.nout + self.nreg))
-
+        self.concentrations = 1/(self.size) * np.ones((self.size))
+    
+    def warmup(self, nsteps=25):
+        self.set_input(np.zeros((self.nin)))
+        self.step(nsteps)
 
     def setup(self):
         self.set_genome()
         self.enh_afinity_matrix, self.inh_affinity_matrix = compute_proteins_afinity(self.identifiers, self.enhancers, self.inhibiters, self.idsize, self.beta, self.a, self.f)
+        # print(self.enh_afinity_matrix)
+        # print(self.inh_affinity_matrix)
         self.reset()
 
     
     def set_genome(self):
-
+        """
+        set the genome of the grn as a list
+        """
         self.dict_grn = {
             "nin": self.nin,
             "nout": self.nout,
@@ -80,7 +106,6 @@ class GRN:
 
         all_values = []
         for key, value in self.dict_grn.items():
-            print(key, value)
             if isinstance(value, np.ndarray):
                 all_values.extend(value.tolist())
                 # print("value : ", value)
@@ -93,16 +118,18 @@ class GRN:
         return all_values
     
     def __str__(self):
-        return str(self.genome)
+        return str(self.dict_grn)
     
-    def step(self):
-        self.concentrations = step(self.enh_afinity_matrix, self.inh_affinity_matrix, self.concentrations, self.delta, self.nin, self.nout, self.dt, self.size)
+    def step(self, nsteps = 1):
+
+        for i in range(nsteps):
+            self.concentrations = step(self.enh_afinity_matrix, self.inh_affinity_matrix, self.concentrations, self.delta, self.nin, self.nout, self.dt, self.size)
         
     def set_input(self, input_concentrations):
         self.concentrations[:self.nin] = input_concentrations
 
     def get_output(self):
-        return self.concentrations[self.nin:self.nout+self.nin]
+        return self.concentrations[self.nin:self.nout+self.nin].copy()
 
     def from_genome(self, genome):
         """genome of the grn
@@ -135,7 +162,6 @@ class GRN:
         self.identifiers = genome[id_start:id_end]
         self.enhancers = genome[enh_start:enh_end]
         self.inhibiters = genome[inh_start:inh_end]
-
         self.setup()
 
 
@@ -148,24 +174,35 @@ def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, no
 
     next_concentrations = np.zeros((nprot), dtype=np.float64)
     # sum_concentration = 0.0
+
+    
     for i in range(nprot):
         # proteins is an input 
         if i < nin:
             next_concentrations[i] = concentrations[i]
         else:
             # prot is a regulator and regulated by either input prot our regulator proteins
-            dci = 0.0
+            # dci = 0.0
+            enhancing_factor = 0.0
+            inhibiting_factor = 0.0
             for j in range(nprot):
                 # prot is a regulator and regulated by either input prot our regulator proteins
-                if (j > nin + nout - 1) or (j < nin) :
-                    dci += concentrations[j] * (enh_afinity_matrix[i][j] - inh_affinity_matrix[i][j])
-            dci = dci * delta/nprot
-            next_concentrations[i] =  max(0.0, concentrations[i] + dt * dci)
-            # sum_concentration += next_concentrations[i]
+                if (j > nin + nout ) or (j < nin) :
+                    
+                    enhancing_factor += concentrations[j] * enh_afinity_matrix[j][i]
+                    inhibiting_factor += concentrations[j] * inh_affinity_matrix[j][i]
+                    # enhancing_factor += concentrations[j] * enh_afinity_matrix[j][i]
+                    # inhibiting_factor += concentrations[j] * inh_affinity_matrix[j][i]
+                    # dci += concentrations[j] * (enh_afinity_matrix[i][j] - inh_affinity_matrix[i][j])
+            dci = delta * (enhancing_factor - inhibiting_factor)/(nprot)     
+            
+            next_concentrations[i] = min(1.0,max(0.0, concentrations[i] + dt * dci))            # sum_concentration += next_concentrations[i]
 
-    sum_concentration = np.sum(next_concentrations)
-    if sum_concentration > 0.0:
-        next_concentrations = next_concentrations / sum(next_concentrations)
+    # sum_concentration = np.sum(next_concentrations[nin:])
+    # if sum_concentration > 0.0:
+    #     next_concentrations[nin:] = next_concentrations[nin:] / sum_concentration
+        
+        
         # next_concentrations = next_concentrations / sum_concentration
         # next_concentrations = concentrations + delta * (np.dot(enh_afinity_matrix, concentrations) - np.dot(inh_affinity_matrix, concentrations))
         # print("sum concentration", sum_concentration)
@@ -173,7 +210,7 @@ def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, no
         #     next_concentrations = next_concentrations / sum_concentration
 
 
-    return next_concentrations
+    return next_concentrations.copy()
 
 @jit
 def compute_proteins_afinity(identifiers, enhancers, inhibiters, usize, beta, a = 0, f = 0):
@@ -183,15 +220,16 @@ def compute_proteins_afinity(identifiers, enhancers, inhibiters, usize, beta, a 
     enhancing_match = np.zeros((matrix_size, matrix_size))
     inhibiting_match = np.zeros((matrix_size, matrix_size))
 
-    if a != 0:
-        for i in range(matrix_size):
-            for j in range(matrix_size):
-                enhancing_match[i][j] = usize - abs(enhancers[j] - identifiers[i])
-                inhibiting_match[i][j] = usize - abs(inhibiters[j] - identifiers[i])
 
-        
+    for i in range(matrix_size):
+        for j in range(matrix_size):
+            enhancing_match[i][j] = usize - abs(enhancers[i] - identifiers[j])
+            inhibiting_match[i][j] = usize - abs(inhibiters[i] - identifiers[j])
+    
+    if a != 0:
         enh_max = np.max(enhancing_match)
         inh_max = np.max(inhibiting_match)
+    
 
     enh_affinity_matrix = np.zeros((matrix_size, matrix_size))
     inh_affinity_matrix = np.zeros((matrix_size, matrix_size))
@@ -200,16 +238,16 @@ def compute_proteins_afinity(identifiers, enhancers, inhibiters, usize, beta, a 
         for j in range(matrix_size):
             if a == 0:
                 # afinity 0 without divided by usize but usize = 1
-                enh_affinity_matrix[i][j] = -beta*abs(enhancers[j] - identifiers[i])  
-                inh_affinity_matrix[i][j] = -beta*abs(inhibiters[j] - identifiers[i])
+                enh_affinity_matrix[i][j] = -beta*enhancing_match[i][j]  
+                inh_affinity_matrix[i][j] = -beta*inhibiting_match[i][j]
             elif a == 1:
                 # affinity 1 with max outside
-                enh_affinity_matrix[i][j] = beta*(enhancing_match[i][j]) - enh_max
-                inh_affinity_matrix[i][j] = beta*(inhibiting_match[i][j]) - inh_max
+                enh_affinity_matrix[i][j] = beta*(1.0 - enhancing_match[i][j]) - enh_max
+                inh_affinity_matrix[i][j] = beta*(1.0 - inhibiting_match[i][j]) - inh_max
             else: # a == 2
                 # affinity 2 with max  inside
-                enh_affinity_matrix[i][j] = beta*(enhancing_match[i][j] - enh_max ) 
-                inh_affinity_matrix[i][j] = beta*(inhibiting_match[i][j] - inh_max ) 
+                enh_affinity_matrix[i][j] = beta*(1.0 - enhancing_match[i][j] - enh_max ) 
+                inh_affinity_matrix[i][j] = beta*(1.0 - inhibiting_match[i][j] - inh_max ) 
 
     if f == 0:
         enh_affinity_matrix = np.exp(enh_affinity_matrix)
