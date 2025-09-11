@@ -8,7 +8,7 @@ from copy import deepcopy
     genome are a list of [2 + (nin + nout + nreg)*3]
     [beta, delta, identifiers..., enhancers..., inhibiters...]
 """
-
+@jit
 def decode_genome(genome, nin, nout):
     """
     Decode a flat genome into components.
@@ -17,7 +17,7 @@ def decode_genome(genome, nin, nout):
     Returns: beta, delta, ids, enh, inh, n_reg (number of regulators)
     """
 
-    genome = np.asarray(genome)
+    genome = np.asarray(genome, dtype=np.float64)
     total = genome.size
     if (total - 2) % 3 != 0:
         print(total)
@@ -27,24 +27,28 @@ def decode_genome(genome, nin, nout):
         raise ValueError("Genome encodes fewer proteins than nin + nout.")
     beta = float(genome[0])
     delta = float(genome[1])
-    ids = genome[2 : 2 + n].astype(float).copy()
-    enh = genome[2 + n : 2 + 2 * n].astype(float).copy()
-    inh = genome[2 + 2 * n : 2 + 3 * n].astype(float).copy()
+    ids = genome[2 : 2 + n].copy()
+    enh = genome[2 + n : 2 + 2 * n].copy()
+    inh = genome[2 + 2 * n : 2 + 3 * n].copy()
     n_reg = n - (nin + nout)
     return beta, delta, ids, enh, inh, n_reg
 
+@jit
 def encode_genome(beta, delta, ids, enh, inh):
     """Reassemble genome"""
     return np.concatenate(([beta, delta], ids, enh, inh))
 
 
+@jit
 def random_genome(nin, nout, nreg, beta_min=0.2, beta_max=2, delta_min=0.2, delta_max=2):
     genome = np.random.random(2 + (nin + nout + nreg) * 3)
-    genome[:2] = genome[:2] * (beta_max - beta_min) + beta_min
+    genome[0] = genome[0] * (beta_max - beta_min) + beta_min
+    genome[1] = genome[1] * (delta_max - delta_min) + delta_min
+    
     return genome
 
 
-
+@jit
 def protein_distance(genomeA, genomeB, k, j,
                      id_coef=1.0, inh_coef=1.0, enh_coef=1.0):
     """
