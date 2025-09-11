@@ -38,7 +38,7 @@ class RegressionProblem:
 
         for i in range(N):
             grn.set_input(self.xtrain[i])
-            grn.step()
+            grn.step(5)
             ypred.append(grn.get_output().item())
             
         return ypred
@@ -46,7 +46,7 @@ class RegressionProblem:
 
 class FrenchFlagProblem:
     def __init__(self, nin, nout, nreg):
-        self.N = 50
+        self.N = 30
         self.nin = 2
         self.nout = 3
         self.nreg = 0
@@ -60,7 +60,7 @@ class FrenchFlagProblem:
 
         g.setup()
         ypred = self.run_grn(g)        
-        err = np.linalg.norm(ypred-self.ytrain)
+        err = np.linalg.norm(ypred.T-self.ytrain)
         if np.isnan(err):
             logger.warning("err is nan") 
 
@@ -76,7 +76,7 @@ class FrenchFlagProblem:
         for i in range(self.N):
             for j in range(self.N):
                 g.set_input([i/self.N, j/self.N])
-                g.step()
+                g.step(10)
                 out = g.get_output()
                 ypred[i][j] = out
             
@@ -94,12 +94,12 @@ class FrenchFlagProblem:
         stripe_width = N // 3
 
         # Blue stripe
-        flag[:, :stripe_width, :] = [0, 85, 164]  # RGB for blue
+        flag[:, :stripe_width, :] = [0, 0, 255]  # RGB for blue
 
         # White stripe
         flag[:, stripe_width:2*stripe_width, :] = [255, 255, 255]
 
         # Red stripe
-        flag[:, 2*stripe_width:, :] = [239, 65, 53]  # RGB for red
+        flag[:, 2*stripe_width:, :] = [255, 0, 0]  # RGB for red
 
-        return flag/255.0
+        return flag.T/255.0

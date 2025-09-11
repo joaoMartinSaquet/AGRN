@@ -16,7 +16,7 @@ class GRN:
     deltamin = 0.2
     deltamax = 2
     a = 0
-    f = 0
+    f = 1
 
     identifiers = []
     enhancers = []
@@ -67,8 +67,8 @@ class GRN:
         self.step(nsteps)
 
     def setup(self):
-        self.enh_afinity_matrix, self.inh_affinity_matrix = compute_proteins_afinity(self.identifiers, self.enhancers, self.inhibiters, self.idsize, self.beta, self.a, self.f)
-        # print(self.enh_afinity_matrix)
+        self.enh_affinity_matrix, self.inh_affinity_matrix = compute_proteins_affinity(self.identifiers, self.enhancers, self.inhibiters, self.idsize, self.beta, self.a, self.f)
+        # print(self.enh_affinity_matrix)
         # print(self.inh_affinity_matrix)
         self.reset()
 
@@ -95,7 +95,7 @@ class GRN:
     def step(self, nsteps = 1):
 
         for i in range(nsteps):
-            self.concentrations = step(self.enh_afinity_matrix, self.inh_affinity_matrix, self.concentrations, self.delta, self.nin, self.nout, self.dt, self.size)
+            self.concentrations = step(self.enh_affinity_matrix, self.inh_affinity_matrix, self.concentrations, self.delta, self.nin, self.nout, self.dt, self.size)
         
     def set_input(self, input_concentrations):
         self.concentrations[:self.nin] = input_concentrations
@@ -104,7 +104,7 @@ class GRN:
         return self.concentrations[self.nin:self.nout+self.nin].copy()
 
 @jit(nopython=True)
-def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, nout, dt, nprot):
+def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, nout, dt, nprot):
 
     next_concentrations = np.zeros((nprot), dtype=np.float64)
     # sum_concentration = 0.0
@@ -123,11 +123,11 @@ def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, no
                 # prot is a regulator and regulated by either input prot our regulator proteins
                 if (j > nin + nout ) or (j < nin) :
                     
-                    enhancing_factor += concentrations[j] * enh_afinity_matrix[j][i]
+                    enhancing_factor += concentrations[j] * enh_affinity_matrix[j][i]
                     inhibiting_factor += concentrations[j] * inh_affinity_matrix[j][i]
-                    # enhancing_factor += concentrations[j] * enh_afinity_matrix[j][i]
+                    # enhancing_factor += concentrations[j] * enh_affinity_matrix[j][i]
                     # inhibiting_factor += concentrations[j] * inh_affinity_matrix[j][i]
-                    # dci += concentrations[j] * (enh_afinity_matrix[i][j] - inh_affinity_matrix[i][j])
+                    # dci += concentrations[j] * (enh_affinity_matrix[i][j] - inh_affinity_matrix[i][j])
             dci = delta * (enhancing_factor - inhibiting_factor)/(nprot)     
             
             next_concentrations[i] = min(1.0,max(0.0, concentrations[i] + dt * dci))            # sum_concentration += next_concentrations[i]
@@ -140,8 +140,8 @@ def step(enh_afinity_matrix, inh_affinity_matrix, concentrations, delta, nin, no
     return next_concentrations.copy()
 
 @jit
-def compute_proteins_afinity(identifiers, enhancers, inhibiters, usize, beta, a = 0, f = 0):
-    """compute afinity of all proteins, """
+def compute_proteins_affinity(identifiers, enhancers, inhibiters, usize, beta, a = 0, f = 0):
+    """compute affinity of all proteins, """
     matrix_size = len(identifiers)
 
     enhancing_match = np.zeros((matrix_size, matrix_size))
@@ -164,7 +164,7 @@ def compute_proteins_afinity(identifiers, enhancers, inhibiters, usize, beta, a 
     for i in range(matrix_size):
         for j in range(matrix_size):
             if a == 0:
-                # afinity 0 without divided by usize but usize = 1
+                # affinity 0 without divided by usize but usize = 1
                 enh_affinity_matrix[i][j] = -beta*enhancing_match[i][j]  
                 inh_affinity_matrix[i][j] = -beta*inhibiting_match[i][j]
             elif a == 1:

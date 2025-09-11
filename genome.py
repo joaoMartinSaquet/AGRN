@@ -20,6 +20,7 @@ def decode_genome(genome, nin, nout):
     genome = np.asarray(genome)
     total = genome.size
     if (total - 2) % 3 != 0:
+        print(total)
         raise ValueError("Genome length is not 2 + 3*n for integer n.")
     n = (total - 2) // 3  # n = nin + nout + nreg_total
     if n < (nin + nout):
