@@ -33,10 +33,10 @@ def decode_genome(genome, nin, nout):
     n_reg = n - (nin + nout)
     return beta, delta, ids, enh, inh, n_reg
 
-@jit
+
 def encode_genome(beta, delta, ids, enh, inh):
     """Reassemble genome"""
-    return np.concatenate(([beta, delta], ids, enh, inh))
+    return np.concatenate(([beta, delta], ids, enh, inh), dtype=np.float64)
 
 
 @jit

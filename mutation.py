@@ -29,27 +29,26 @@ def modify_gaussian (individual, betamin, betamax, deltamin, deltamax):
     # index is beta or delta ?
     if index == 0:
         new_beta = np.random.normal() + individual[index] 
-        if new_beta > betamax:
-            individual[index] = (new_beta - betamax) + betamin
-        elif new_beta < betamin:
-            individual[index] = betamax - betamin - new_beta
-        else:
-            individual[index] = new_beta
+        individual[index] = np.clip(new_beta, betamin, betamax)
+        # if new_beta > betamax:
+        #     individual[betamax] = (new_beta - betamax) + betamin
+        # elif new_beta < betamin:
+        #     individual[index] = betamax - betamin - new_beta
+        # else:
+        #     individual[index] = new_beta
     elif index == 1:
-        new_delta = np.random.normal() + individual[index] 
-        if new_delta > betamax:
-            individual[deltamax] = (new_delta - deltamax) + deltamin
-        elif new_delta < deltamin:
-            individual[index] = deltamax - deltamin - new_delta
-        else:
-            individual[index] = new_delta
+        new_delta = np.random.normal() + individual[index]
+        individual[index] = np.clip(new_delta, deltamin, deltamax)
+        # if new_delta > betamax:
+        #     individual[deltamax] = (new_delta - deltamax) + deltamin
+        # elif new_delta < deltamin:
+        #     individual[index] = deltamax - deltamin - new_delta
+        # else:
+        #     individual[index] = new_delta
 
     elif index > 1:
         new_val = np.random.normal() + individual[index]
-        if new_val > 1:
-            individual[index] = (new_val - 1)
-        elif new_val < 0:
-            individual[index] = new_val
+        individual[index] = np.clip(new_val, 0., 1.)
     return individual
 
 def add(individual, nin, nout, max_reg = 50):
@@ -91,7 +90,8 @@ def delete(individual, nin, nout):
 def mutate(individual, nin, nout, betamin, betamax, deltamin, deltamax):
     r = np.random.random()
     if r > 0.25:
-        individual = modify_gaussian(individual, betamin, betamax, deltamin, deltamax)
+        individual = modify_gaussian(individual, betamin, betamax, deltamin, deltamax) # thisz doesnt work sry not sry see if we can fix the out of range values
+
     elif r > 0.5:
         individual = add(individual, nin, nout)
     else:

@@ -1,7 +1,7 @@
 import grn
 import numpy as np
 import loguru as logger
-
+import gymnasium as gym
 
 
 class RegressionProblem:
@@ -22,7 +22,7 @@ class RegressionProblem:
 
         g.setup()
         ypred = self.run_grn(g)        
-        err = np.sum(abs(ypred-self.ytrain))
+        err = np.sum(10*abs(ypred-self.ytrain)**2)
         if np.isnan(err):
             logger.warning("err is nan") 
 
@@ -38,7 +38,7 @@ class RegressionProblem:
 
         for i in range(N):
             grn.set_input(self.xtrain[i])
-            grn.step(5)
+            grn.step(100)
             ypred.append(grn.get_output().item())
             
         return ypred
@@ -103,3 +103,44 @@ class FrenchFlagProblem:
         flag[:, 2*stripe_width:, :] = [255, 0, 0]  # RGB for red
 
         return flag.T/255.0
+
+
+
+class gymProblem():
+    def __init__(self, env_name, start_nreg):
+        self.env = gym.make(env_name)
+
+        self.nin = self.env.observation_space.shape[0]
+        self.nout = self.env.action_space.shape[0]
+        self.nreg = start_nreg
+
+        
+        self.has_continuous_observation = isinstance(self.env.observation_space, gym.spaces.Box)
+        
+        action_space = self.env.action_space
+        self.has_continuous_action = isinstance(action_space, gym.spaces.Box)
+        self.dtype = float
+        if self.has_continuous_action:
+            self.nout = action_space.shape[0]
+            self.h_act = action_space.high
+            self.l_act = action_space.low
+        else:
+            self.nout = 1
+            self.n = action_space.n
+            self.dtype = int
+
+    def eval(self, genome):
+        
+        g = grn.GRN(genome, self.nin, self.nout)
+        obs, env_info = self.env.reset()
+        done = False
+        g.setup()
+        g.warmup(25)
+        
+        ypred = self.run_grn(g)        
+        err = np.linalg.norm(ypred.T-self.ytrain)
+        if np.isnan(err):
+            logger.warning("err is nan") 
+
+        # print("error on problem", err)
+        return -err, ypred
