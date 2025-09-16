@@ -22,12 +22,12 @@ class RegressionProblem:
 
         g.setup()
         ypred = self.run_grn(g)        
-        err = np.sum(10*abs(ypred-self.ytrain)**2)
+        err = np.sum(abs(ypred-self.ytrain)**2)
         if np.isnan(err):
             logger.warning("err is nan") 
-
+        # print(f"Fitness for {genome}: {err} (type: {type(err)})")
         # print("error on problem", err)
-        return -err, ypred
+        return -err, 
     
     def run_grn(self, grn):
 
@@ -38,7 +38,7 @@ class RegressionProblem:
 
         for i in range(N):
             grn.set_input(self.xtrain[i])
-            grn.step(100)
+            grn.step(10)
             ypred.append(grn.get_output().item())
             
         return ypred
@@ -108,13 +108,12 @@ class FrenchFlagProblem:
 
 class gymProblem():
     def __init__(self, env_name, start_nreg):
-        self.env = gym.make(env_name)
-
-        self.nin = self.env.observation_space.shape[0]
-        self.nout = self.env.action_space.shape[0]
-        self.nreg = start_nreg
-
         
+        self.env_name = env_name
+
+        self.env = gym.make(env_name)
+        self.rendering_env = gym.make(env_name, render_mode="human")
+
         self.has_continuous_observation = isinstance(self.env.observation_space, gym.spaces.Box)
         
         action_space = self.env.action_space
@@ -125,9 +124,15 @@ class gymProblem():
             self.h_act = action_space.high
             self.l_act = action_space.low
         else:
-            self.nout = 1
-            self.n = action_space.n
+            self.nout = action_space.n
+            # self.n = 
             self.dtype = int
+
+        self.nin = self.env.observation_space.shape[0]
+        self.nreg = start_nreg
+
+        
+
 
     def eval(self, genome):
         
@@ -136,11 +141,52 @@ class gymProblem():
         done = False
         g.setup()
         g.warmup(25)
-        
-        ypred = self.run_grn(g)        
-        err = np.linalg.norm(ypred.T-self.ytrain)
-        if np.isnan(err):
-            logger.warning("err is nan") 
+        done = False
+        fit = 0
 
-        # print("error on problem", err)
-        return -err, ypred
+        while not done:
+
+            g.set_input(obs)
+            g.step(10)
+            action = g.get_output()
+
+            if self.has_continuous_action:
+                action = action * (self.h_act - self.l_act) + self.l_act
+            else :
+                action = np.argmax(action)
+            obs, reward, done, truncated, terminated, = self.env.step(action)
+
+            fit += reward
+
+            if truncated or terminated:
+                done = True
+
+        return fit,
+
+
+    def vis_genome(self, genome):
+
+        g = grn.GRN(genome, self.nin, self.nout)
+        obs, env_info =  self.rendering_env.reset()
+        done = False
+        g.setup()
+        g.warmup(25)
+        done = False
+
+        while not done:
+
+            g.set_input(obs)
+            g.step(10)
+            action = g.get_output()
+
+            if self.has_continuous_action:
+                action = action * (self.h_act - self.l_act) + self.l_act
+            else :
+                action = np.argmax(action)
+            obs, reward, done, truncated, terminated, =  self.rendering_env.step(action)
+
+            if truncated or terminated:
+                done = True
+
+
+

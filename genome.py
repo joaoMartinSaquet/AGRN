@@ -3,6 +3,7 @@ from numba import jit
 import numpy as np
 import random
 from copy import deepcopy
+from loguru import logger
 
 """
     genome are a list of [2 + (nin + nout + nreg)*3]
@@ -20,10 +21,11 @@ def decode_genome(genome, nin, nout):
     genome = np.asarray(genome, dtype=np.float64)
     total = genome.size
     if (total - 2) % 3 != 0:
-        print(total)
+        # print(f"total genome size : {total}")
         raise ValueError("Genome length is not 2 + 3*n for integer n.")
     n = (total - 2) // 3  # n = nin + nout + nreg_total
     if n < (nin + nout):
+        # logger.error(f"proteins number : {n}, nin : {nin}, nout : {nout}")
         raise ValueError("Genome encodes fewer proteins than nin + nout.")
     beta = float(genome[0])
     delta = float(genome[1])

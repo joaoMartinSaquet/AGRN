@@ -21,13 +21,15 @@ def modify(individual, betamin, betamax, deltamin, deltamax):
     return individual
     
 
-def modify_gaussian (individual, betamin, betamax, deltamin, deltamax):
+def modify_gaussian (individual, betamin, betamax, deltamin, deltamax, sig_beta = 1, sig_delta = 1, sig_gene = 1):
     
+
     len_genome = len(individual)
     index = np.random.randint(0, len_genome)
 
     # index is beta or delta ?
     if index == 0:
+        # np.sqrt(2)*sig_beta*(betamax - betamin)*erf(ui)
         new_beta = np.random.normal() + individual[index] 
         individual[index] = np.clip(new_beta, betamin, betamax)
         # if new_beta > betamax:
@@ -70,16 +72,17 @@ def add(individual, nin, nout, max_reg = 50):
 def delete(individual, nin, nout):
 
     beta, delta, ids, enh, inh, n_reg = decode_genome(individual, nin, nout)
-    
+    mutated = False
     if len(ids) > nin+nout:
         protein_id = np.random.randint(nin+nout, nin+nout+n_reg)
         ids = np.delete(ids, protein_id)
         enh = np.delete(enh, protein_id)
         inh = np.delete(inh, protein_id)
+        mutated = True
             
     genome = encode_genome(beta, delta, np.array(ids), np.array(enh), np.array(inh))
 
-    return creator.Individual(genome.tolist())
+    return creator.Individual(genome.tolist()), mutated
 
     # decode_genome(individual)
 
@@ -88,14 +91,20 @@ def delete(individual, nin, nout):
 
 
 def mutate(individual, nin, nout, betamin, betamax, deltamin, deltamax):
-    r = np.random.random()
-    if r > 0.25:
-        individual = modify_gaussian(individual, betamin, betamax, deltamin, deltamax) # thisz doesnt work sry not sry see if we can fix the out of range values
 
-    elif r > 0.5:
-        individual = add(individual, nin, nout)
-    else:
-        individual = delete(individual, nin, nout)
+    mutated = False
+    while not mutated: # we break only if a mutation did happend
+        r = np.random.uniform()
+        if r <= 0.25:
+            individual = modify(individual, betamin, betamax, deltamin, deltamax)
+            mutated = True
+            # individual = modify_gaussian(individual, betamin, betamax, deltamin, deltamax)
+        elif r <= 0.75:
+            individual = add(individual, nin, nout)
+            mutated = True
+        else:
+            individual, mutated = delete(individual, nin, nout)
+
 
 
     return individual,

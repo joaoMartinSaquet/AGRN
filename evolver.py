@@ -13,12 +13,21 @@ from mutation import *
 from genome import *
 from crossover import *
 
+import multiprocessing
+
+def evaluate(individual, problem):
+    fit, _ = problem.eval(individual)
+    return fit,
+    
+
+
+
 class EATMuPlusLambda():
 
     def __init__(self, nin, nout, nreg,
                  beta_min=0.2, beta_max=2, delta_min=0.2, delta_max=2,
                  crossover_threshold = 0.5, mutation_rate = 0.25, crossover_rate = 0.5,
-                 mut_add_prob = 0.5, mut_del_prob = 0.25, mut_mod_prob = 0.25,):
+                 mut_add_prob = 0.5, mut_del_prob = 0.25, mut_mod_prob = 0.25):
         
         # grn parameters
 
@@ -40,7 +49,7 @@ class EATMuPlusLambda():
 
         self.init_deap(nin=nin, nout=nout, nreg=nreg)
 
-    def init_deap(self, nin, nout, nreg):
+    def init_deap(self, nin, nout, nreg, scoop=False):
 
         self.nin = nin
         self.nout = nout
@@ -48,7 +57,6 @@ class EATMuPlusLambda():
 
 
         # problem = p.FrenchFlagProblem(nin=nin, nout=nout, nreg=nreg)
-
 
         # 1. Define the fitness and individual types
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))  # Maximize fitness
@@ -66,13 +74,15 @@ class EATMuPlusLambda():
 
         # 3. Define genetic operators
         # self.toolbox.register("mate", cx, nin=nin, nout=nout)  # Crossover (blend parents) aligned crossover
-        self.toolbox.register("mate", tools.cxBlend,alpha=1.0)  # Crossover (blend parents) { doesnt  work at his get some negative and outside the range values}
+        self.toolbox.register("mate", tools.cxBlend, alpha=10)  # Crossover (blend parents) { doesnt  work at his get some negative and outside the range values}
         # self
         
         self.toolbox.register("mutate", mutate, nin=nin, nout=nout, betamin=self.betamin, betamax=self.betamax, deltamin=self.deltamin, deltamax=self.deltamax)  # Mutation
         # toolbox.register("mutate", lambda individual: tools.mutGaussian(individual, mu=0, sigma=0.5, indpb=0.5))  # Mutation
 
-        self.toolbox.register("select", tools.selTournament, tournsize=3)  # Selection
+        # self.toolbox.register("select", tools.selTournament, tournsize=3)  # Selection
+        self.toolbox.register("select", tools.selSPEA2)  # Selection
+        
     
 
         # population = self.toolbox.population(n=500)  # 50 individuals
@@ -83,17 +93,20 @@ class EATMuPlusLambda():
         self.stats_fit.register("min", np.min)
         self.stats_fit.register("max", np.max)
         self.stats_fit.register("std", np.std)
+        self.stats_fit.register("median", np.median)
         
 
-    def run(self,n_gen, problem, mu, lambda_, cxpb = 0.3, mutpb = 0.7, verbose=True):
+
+
+    def run(self,n_gen, problem, mu, lambda_, cxpb = 0.0, mutpb = 1.0, multiproc = False, verbose=True):
         
-        def evaluate(individual):
-            fit, _ = problem.eval(individual)
-            return fit,
 
-
-        self.toolbox.register("evaluate", evaluate)  # Fitness = sum of genome values
-
+        self.toolbox.register("evaluate", problem.eval)  # Fitness = sum of genome values
+        
+        if multiproc:
+            pool = multiprocessing.Pool()
+            self.toolbox.register("map", pool.map)
+            
         population = self.toolbox.population(n=500)  # 50 individuals
         hof = tools.HallOfFame(1)  # Track best individual
 
@@ -109,6 +122,20 @@ class EATMuPlusLambda():
             stats=self.stats_fit,
             verbose=verbose    # Print progress
         )
+
+        # self.pop, self.logbook = algorithms.eaMuCommaLambda(
+        #     population,
+        #     self.toolbox,
+        #     lambda_ = lambda_,
+        #     mu=mu,
+        #     cxpb=cxpb,       # Crossover probability
+        #     mutpb=mutpb,      # Mutation probability
+        #     ngen=n_gen,        # Generations
+        #     halloffame=hof,
+        #     stats=self.stats_fit,
+        #     verbose=verbose    # Print progress
+        # )
+
 
         return hof,
 
@@ -136,7 +163,7 @@ class EATMuPlusLambda():
         # Plot avg, max, min with different colors and line styles
         ax.plot(gens, avg_fitness, color='blue', linewidth=2, label='Average Fitness')
         ax.plot(gens, max_fitness, color='green', linewidth=2, label='Max Fitness')
-        ax.plot(gens, min_fitness, color='red', linewidth=2, label='Min Fitness')
+        # ax.plot(gens, min_fitness, color='red', linewidth=2, label='Min Fitness')
 
         # Labels, title, legend
         ax.set_xlabel('Generation', fontsize=14)

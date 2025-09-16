@@ -103,7 +103,7 @@ class GRN:
     def get_output(self):
         return self.concentrations[self.nin:self.nout+self.nin].copy()
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, nout, dt, nprot):
 
     next_concentrations = np.zeros((nprot), dtype=np.float64)
@@ -139,7 +139,7 @@ def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, n
 
     return next_concentrations.copy()
 
-@jit
+@jit(cache=True, nopython=True)
 def compute_proteins_affinity(identifiers, enhancers, inhibiters, usize, beta, a = 0, f = 0):
     """compute affinity of all proteins, """
     matrix_size = len(identifiers)
