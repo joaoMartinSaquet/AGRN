@@ -160,6 +160,39 @@ The GRN simulation follows these dynamics:
    ```
 4. **Input/Output**: Input proteins have fixed concentrations, output proteins are read
 
+## Results
+
+The following examples demonstrate the capabilities of AGRN across different problem domains:
+
+### Function Approximation Results
+
+#### Square Wave Reconstruction
+The framework successfully evolves GRNs to approximate complex functions using Fourier decomposition:
+
+![Square Wave Best Result](example/square_best_ever.png)
+*Evolution of a GRN to approximate a square wave function using Fourier series decomposition (k=3)*
+
+![Square Wave Evolution](example/fitness_history_square_v3.png)
+*Fitness evolution over generations showing convergence to optimal solution*
+
+### Reinforcement Learning Results
+
+#### BipedalWalker Environment
+The evolved GRN successfully learns to control the BipedalWalker-v3 environment:
+
+![BipedalWalker Episode](example/images/bipedal_episode.gif)
+*Evolved GRN controlling the BipedalWalker agent - demonstrating successful locomotion*
+
+![BipedalWalker Training](example/bipedal_walker_history.png)
+*Training progress on BipedalWalker environment showing improvement in reward over generations*
+
+### Key Performance Insights
+
+- **Convergence Speed**: Most problems show significant improvement within 100-500 generations
+- **Solution Quality**: Final solutions achieve competitive performance compared to traditional approaches
+- **Network Complexity**: Evolved networks are typically compact, often requiring only a few regulatory proteins
+- **Robustness**: Solutions show good generalization to unseen test data
+
 ## Examples
 
 See the `example/` directory for complete examples:
