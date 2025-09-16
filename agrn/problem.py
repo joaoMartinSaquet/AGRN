@@ -1,4 +1,4 @@
-import grn
+from . import grn
 import numpy as np
 import loguru as logger
 import gymnasium as gym

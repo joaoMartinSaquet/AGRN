@@ -1,5 +1,5 @@
 import numpy as np
-from genome import *
+from .genome import *
 from deap import creator
 from loguru import logger
 

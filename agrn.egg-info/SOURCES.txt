@@ -1,0 +1,17 @@
+README.md
+setup.py
+agrn/__init__.py
+agrn/crossover.py
+agrn/evolver.py
+agrn/genome.py
+agrn/grn.py
+agrn/mutation.py
+agrn/problem.py
+agrn/visulaizer.py
+agrn.egg-info/PKG-INFO
+agrn.egg-info/SOURCES.txt
+agrn.egg-info/dependency_links.txt
+agrn.egg-info/requires.txt
+agrn.egg-info/top_level.txt
+agrn/test/__init__.py
+agrn/test/test_visu_grn.py

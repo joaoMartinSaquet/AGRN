@@ -2,7 +2,7 @@ import numba
 import numpy as np
 from numba import jit
 import loguru as logger
-from genome import *
+from .genome import *
 
 class GRN:
 

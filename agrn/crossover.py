@@ -1,7 +1,7 @@
 from deap import creator
 import random, numpy as np
 from copy import deepcopy
-from genome import decode_genome, encode_genome
+from .genome import decode_genome, encode_genome
 
 def cx(ind1, ind2, nin, nout, threshold=0.1):
     """

@@ -1,18 +1,6 @@
-import sys
-from pathlib import Path
-
-# Get the parent directory of the current file
-parent_dir = Path(__file__).resolve().parent.parent
-
-# Add it to sys.path
-sys.path.append(str(parent_dir))
-
 import matplotlib.pyplot as plt
 import numpy as np
-from evolver import *
-from genome import *
-from problem import *
-from grn import *
+from agrn import EATMuPlusLambda, RegressionProblem, GRN
 
 def f(t, f: float = 1, k: int = 3):
     """ Fourrier decomposition of a square signal

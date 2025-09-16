@@ -1,4 +1,4 @@
-import grn
+from . import grn
 import numpy as np
 import matplotlib.pyplot as plt
 import random
@@ -9,9 +9,9 @@ from loguru import logger
 import seaborn as sns
 # sns.set_style("darkgrid")  # Seaborn style
 
-from mutation import *
-from genome import *
-from crossover import *
+from .mutation import *
+from .genome import *
+from .crossover import *
 
 import multiprocessing
 
