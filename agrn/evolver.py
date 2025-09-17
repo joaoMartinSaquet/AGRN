@@ -12,16 +12,14 @@ import seaborn as sns
 from .mutation import *
 from .genome import *
 from .crossover import *
+from .statistics import *
 
 import multiprocessing
 
-def evaluate(individual, problem):
-    fit, _ = problem.eval(individual)
-    return fit,
+# def evaluate(individual, problem):
+#     fit, _ = problem.eval(individual)
+#     return fit,
     
-
-
-
 class EATMuPlusLambda():
 
     def __init__(self, nin, nout, nreg,
@@ -94,9 +92,12 @@ class EATMuPlusLambda():
         self.stats_fit.register("max", np.max)
         self.stats_fit.register("std", np.std)
         self.stats_fit.register("median", np.median)
-        
 
 
+        stats_best_len = tools.Statistics(best_genome_length)
+        stats_best_len.register('best len', lambda x : x)
+
+        # self.mstats = MultiStatistics(stats_fit, stats_best_len)
 
     def run(self,n_gen, problem, mu, lambda_, cxpb = 0.0, mutpb = 1.0, multiproc = False, verbose=True):
         
@@ -108,7 +109,9 @@ class EATMuPlusLambda():
             self.toolbox.register("map", pool.map)
             
         population = self.toolbox.population(n=500)  # 50 individuals
+        hist = tools.History()
         hof = tools.HallOfFame(1)  # Track best individual
+        hist.update(population)
 
         self.pop, self.logbook = algorithms.eaMuPlusLambda(
             population,
@@ -137,7 +140,7 @@ class EATMuPlusLambda():
         # )
 
 
-        return hof,
+        return hof, hist
 
 
     def visualize_evolutions(self):

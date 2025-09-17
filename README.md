@@ -169,11 +169,17 @@ The following examples demonstrate the capabilities of AGRN across different pro
 #### Square Wave Reconstruction
 The framework successfully evolves GRNs to approximate complex functions using Fourier decomposition:
 
-![Square Wave Best Result](example/square_best_ever.png)
+![Square Wave Best Result](example/images/square_best_ever_reg.png)
 *Evolution of a GRN to approximate a square wave function using Fourier series decomposition (k=3)*
 
-![Square Wave Evolution](example/fitness_history_square_v3.png)
+![Square Wave Evolution](example/images/square_best_ever.png)
 *Fitness evolution over generations showing convergence to optimal solution*
+#### French Flag problem
+An Evolved GRN was able to fit a french flag problem, where from x, and y coordinate 
+![French flag Evolution](example/images/french_flag_fit.png) *Fitness evolutions of A GRN for  the french flag *
+
+![French flag pred](example/images/french_flag.png) *French Flag prediction *
+
 
 ### Reinforcement Learning Results
 
@@ -183,7 +189,7 @@ The evolved GRN successfully learns to control the BipedalWalker-v3 environment:
 ![BipedalWalker Episode](example/images/bipedal_episode.gif)
 *Evolved GRN controlling the BipedalWalker agent - demonstrating successful locomotion*
 
-![BipedalWalker Training](example/bipedal_walker_history.png)
+![BipedalWalker Training](example/images/bipedal_walker_history.png)
 *Training progress on BipedalWalker environment showing improvement in reward over generations*
 
 ### Key Performance Insights

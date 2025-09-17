@@ -65,7 +65,7 @@ class FrenchFlagProblem:
             logger.warning("err is nan") 
 
         # print("error on problem", err)
-        return -err, ypred
+        return -err,
 
     def run_grn(self, g):
 

@@ -19,7 +19,34 @@ def modify(individual, betamin, betamax, deltamin, deltamax):
     elif index > 1:
         individual[index] = np.random.uniform()
     return individual
+
+def modify_v2(individual, betamin, betamax, deltamin, deltamax):
+    """modify a random selected genes"""
+
+    len_genome = len(individual)
     
+    
+    for i in range(len_genome):
+
+        r = np.random.uniform()
+        if r < 1/len_genome:
+            break
+        if i == 0:
+            individual[i] = np.random.uniform() * (betamax - betamin) + betamin
+        elif i == 1:
+            individual[i] = np.random.uniform() * (deltamax - deltamin) + deltamin
+        elif i > 1:
+            individual[i] = np.random.uniform()
+    index = np.random.randint(0, len_genome)
+
+    # # index is beta or delta ?
+    # if index == 0:
+    #     individual[index] = np.random.uniform() * (betamax - betamin) + betamin
+    # elif index == 1:
+    #     individual[index] = np.random.uniform() * (deltamax - deltamin) + deltamin
+    # elif index > 1:
+    #     individual[index] = np.random.uniform()
+    return individual
 
 def modify_gaussian (individual, betamin, betamax, deltamin, deltamax, sig_beta = 1, sig_delta = 1, sig_gene = 1):
     
