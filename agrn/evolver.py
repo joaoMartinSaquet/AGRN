@@ -108,7 +108,7 @@ class EATMuPlusLambda():
             pool = multiprocessing.Pool()
             self.toolbox.register("map", pool.map)
             
-        population = self.toolbox.population(n=500)  # 50 individuals
+        population = self.toolbox.population(n=mu)  # 50 individuals
         hist = tools.History()
         hof = tools.HallOfFame(1)  # Track best individual
         hist.update(population)
