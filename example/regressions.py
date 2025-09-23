@@ -32,12 +32,12 @@ if __name__ == "__main__":
 
     
     t = np.linspace(0, 1, 500)
-    ytrain = f(t, f=2, k=100)
-    p = FrenchFlagProblem( nin=2, nout=3, nreg=0)
+    ytrain =  f(t, f=2, k=3)
+    p = RegressionProblem(t, ytrain, nin=1, nout=1, nreg=0)
 
 
     e = EATMuPlusLambda(nin=p.nin, nout=p.nout, nreg=0)
-    hof, hist = e.run(1000, p, 100, 900, multiproc=True, verbose=True)
+    hof, hist = e.run(50, p.eval, 100, 900, multiproc=True, verbose=True)
 
     # graph = networkx.DiGraph(hist.genealogy_tree)
     # graph = graph.reverse()     # Make the grah top-down
@@ -52,5 +52,6 @@ if __name__ == "__main__":
     g = GRN(hof[0], p.nin, p.nout)
 
     # plt.plot(t, ytrain)
-    plt.imshow(p.run_grn(g))
+    plt.plot(t, p.run_grn(g))
+    plt.plot(t, ytrain)
     plt.show()

@@ -4,7 +4,7 @@ import loguru as logger
 import gymnasium as gym
 from gymnasium.wrappers import NormalizeObservation
 
-class RegressionProblem:
+class   RegressionProblem:
     def __init__(self,input_features, output_features, nin, nout, nreg):
         self.xtrain = input_features
         self.ytrain = output_features
@@ -22,7 +22,7 @@ class RegressionProblem:
 
         g.setup()
         ypred = self.run_grn(g)        
-        err = np.sum(abs(ypred-self.ytrain)**2)
+        err = np.linalg.norm(ypred-self.ytrain)
         if np.isnan(err):
             logger.warning("err is nan") 
         # print(f"Fitness for {genome}: {err} (type: {type(err)})")
@@ -39,7 +39,8 @@ class RegressionProblem:
         for i in range(N):
             grn.set_input(self.xtrain[i])
             grn.step(10)
-            ypred.append(grn.get_output().item())
+            o = grn.get_output()
+            ypred.append(o)
             
         return ypred
     

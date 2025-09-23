@@ -17,7 +17,7 @@ if __name__ == "__main__":
     p = gymProblem(env_name, start_nreg=0)
     
     e = EATMuPlusLambda(nin=p.nin, nout=p.nout, nreg=0)
-    alg = e.run(500, p, 500, 500, multiproc=True, verbose=True)
+    alg = e.run(500, p.eval, 500, 500, multiproc=True, verbose=True)
     e.visualize_evolutions()
     p.vis_genome(alg[0][0])
     

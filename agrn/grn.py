@@ -25,7 +25,7 @@ class GRN:
 
     def __init__(self,):
         """    # the concentrations are organised as follows:
-            [nin, nout, nreg] = [x, x, *, R, R, R ] (for 2 input, 1 output and 3 regulators)
+            [nin, nout, nreg] = [x, x, *, R, R, R ] (for 2 input (x), 1 output(*) and 3 regulators)
         """
         self.random(self.nin, self.nout, self.nreg)
 
@@ -109,19 +109,21 @@ def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, n
     next_concentrations = np.zeros((nprot), dtype=np.float64)
     # sum_concentration = 0.0
 
-    
-    for i in range(nprot):
-        # proteins is an input 
+    # proteins i is the protein that is getting regulated
+    for i in range(nprot): 
+        # proteins is an input  
         if i < nin:
             next_concentrations[i] = concentrations[i]
         else:
             # prot is a regulator and regulated by either input prot our regulator proteins
             # dci = 0.0
+
+
             enhancing_factor = 0.0
             inhibiting_factor = 0.0
             for j in range(nprot):
                 # prot is a regulator and regulated by either input prot our regulator proteins
-                if (j > nin + nout ) or (j < nin) :
+                if (j > nin + nout -1) or (j < nin) :
                     
                     enhancing_factor += concentrations[j] * enh_affinity_matrix[j][i]
                     inhibiting_factor += concentrations[j] * inh_affinity_matrix[j][i]
