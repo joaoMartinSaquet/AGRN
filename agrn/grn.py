@@ -15,7 +15,7 @@ class GRN:
     betamax = 2
     deltamin = 0.2
     deltamax = 2
-    a = 0
+    a = 2
     f = 1
 
     identifiers = []
@@ -101,7 +101,25 @@ class GRN:
         self.concentrations[:self.nin] = input_concentrations
 
     def get_output(self):
-        return self.concentrations[self.nin:self.nout+self.nin].copy()
+        """ Do a pairwise concentration difference of outputs proteins : out0 = (Co0 - Co1)/(Co0 + Co1)
+        """
+        output_concentrations = self.concentrations[self.nin:self.nout+self.nin].copy()
+        lo = len(output_concentrations)
+
+        if lo%2 != 0: logger.error("Number of outputs is not even")
+
+        out = np.zeros((lo//2))
+        j = 0
+        for i in range(0, lo, 2):
+            if  (output_concentrations[i] + output_concentrations[i+1]) == 0.0:
+                o = 1.0
+            else:
+                o = (output_concentrations[i] - output_concentrations[i+1]) / (output_concentrations[i] + output_concentrations[i+1])             
+            out[j] = np.clip(o, 0.0, 1.0)
+            j += 1
+
+        # out = output_concentrations
+        return out
 
 @jit(nopython=True, cache=True)
 def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, nout, dt, nprot):
@@ -123,7 +141,7 @@ def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, n
             inhibiting_factor = 0.0
             for j in range(nprot):
                 # prot is a regulator and regulated by either input prot our regulator proteins
-                if (j > nin + nout -1) or (j < nin) :
+                if (j > nin + nout) or (j < nin) :
                     
                     enhancing_factor += concentrations[j] * enh_affinity_matrix[j][i]
                     inhibiting_factor += concentrations[j] * inh_affinity_matrix[j][i]
@@ -139,7 +157,7 @@ def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, n
         # if sum_concentrations > 0.0:
         #     next_concentrations[nin:] = next_concentrations[nin:] / sum_concentrations
 
-    return next_concentrations.copy()
+    return next_concentrations
 
 @jit(cache=True, nopython=True)
 def compute_proteins_affinity(identifiers, enhancers, inhibiters, usize, beta, a = 0, f = 0):

@@ -1,6 +1,6 @@
 from . import grn
 import numpy as np
-import loguru as logger
+from loguru import logger
 import gymnasium as gym
 from gymnasium.wrappers import NormalizeObservation
 
@@ -10,7 +10,7 @@ class   RegressionProblem:
         self.ytrain = output_features
 
         self.nin = nin
-        self.nout = nout
+        self.nout = nout * 2
         self.nreg = nreg
 
 
@@ -18,13 +18,14 @@ class   RegressionProblem:
     def eval(self, genome):
         # translate the model from the genome
         
-        g = grn.GRN(genome)
+        g = grn.GRN(genome, self.nin, self.nout)
 
         g.setup()
-        ypred = self.run_grn(g)        
+        ypred = np.array(self.run_grn(g))      
         err = np.linalg.norm(ypred-self.ytrain)
         if np.isnan(err):
-            logger.warning("err is nan") 
+            # logger.warning("err is nan") 
+            err = 1000 
         # print(f"Fitness for {genome}: {err} (type: {type(err)})")
         # print("error on problem", err)
         return -err, 
@@ -38,7 +39,7 @@ class   RegressionProblem:
 
         for i in range(N):
             grn.set_input(self.xtrain[i])
-            grn.step(10)
+            grn.step(1)
             o = grn.get_output()
             ypred.append(o)
             
@@ -124,11 +125,11 @@ class gymProblem():
         self.has_continuous_action = isinstance(action_space, gym.spaces.Box)
         self.dtype = float
         if self.has_continuous_action:
-            self.nout = action_space.shape[0]
+            self.nout = action_space.shape[0] * 2
             self.h_act = action_space.high
             self.l_act = action_space.low
         else:
-            self.nout = action_space.n
+            self.nout = action_space.n * 2
             # self.n = 
             self.dtype = int
 

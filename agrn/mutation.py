@@ -7,8 +7,9 @@ from loguru import logger
 
 def modify(individual, betamin, betamax, deltamin, deltamax):
     """modify a random selected genes"""
-    
     len_genome = len(individual)
+
+
     index = np.random.randint(0, len_genome)
 
     # index is beta or delta ?
@@ -23,6 +24,7 @@ def modify(individual, betamin, betamax, deltamin, deltamax):
 def modify_v2(individual, betamin, betamax, deltamin, deltamax):
     """modify a random selected genes"""
 
+  
     len_genome = len(individual)
     
     
@@ -132,7 +134,7 @@ def mutate(individual, nin, nout, betamin, betamax, deltamin, deltamax):
         else:
             individual, mutated = delete(individual, nin, nout)
 
-
+    
 
     return individual,
 

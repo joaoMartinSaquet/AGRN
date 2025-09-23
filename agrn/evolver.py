@@ -99,13 +99,16 @@ class EATMuPlusLambda():
 
         # self.mstats = MultiStatistics(stats_fit, stats_best_len)
 
-    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.0, mutpb = 1.0, multiproc = False, verbose=True):
+    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.0, mutpb = 1.0, multiproc = False, n_proc = None, verbose=True):
         
 
         self.toolbox.register("evaluate", eval_fun)  # Fitness = sum of genome values
         
         if multiproc:
-            pool = multiprocessing.Pool(5)
+            if n_proc is None:
+                n_proc = multiprocessing.cpu_count()
+            print(f"Starting {n_proc} processes")
+            pool = multiprocessing.Pool(n_proc)
             self.toolbox.register("map", pool.map)
             
         population = self.toolbox.population(n=mu)  # 50 individuals
@@ -138,7 +141,8 @@ class EATMuPlusLambda():
         #     stats=self.stats_fit,
         #     verbose=verbose    # Print progress
         # ) 
-        pool.close()
+        if multiproc: 
+            pool.close()
 
         return hof, hist
 

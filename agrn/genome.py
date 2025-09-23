@@ -9,7 +9,7 @@ from loguru import logger
     genome are a list of [2 + (nin + nout + nreg)*3]
     [beta, delta, identifiers..., enhancers..., inhibiters...]
 """
-@jit
+
 def decode_genome(genome, nin, nout):
     """
     Decode a flat genome into components.
@@ -17,15 +17,15 @@ def decode_genome(genome, nin, nout):
     nin, nout: number of input and output proteins
     Returns: beta, delta, ids, enh, inh, n_reg (number of regulators)
     """
-
     genome = np.asarray(genome, dtype=np.float64)
     total = genome.size
+    # print(f"total genome size : {total}")
     if (total - 2) % 3 != 0:
         # print(f"total genome size : {total}")
         raise ValueError("Genome length is not 2 + 3*n for integer n.")
     n = (total - 2) // 3  # n = nin + nout + nreg_total
     if n < (nin + nout):
-        # logger.error(f"proteins number : {n}, nin : {nin}, nout : {nout}")
+        # print(f"proteins number : {n}, nin : {nin}, nout : {nout}")
         raise ValueError("Genome encodes fewer proteins than nin + nout.")
     beta = float(genome[0])
     delta = float(genome[1])

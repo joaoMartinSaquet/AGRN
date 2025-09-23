@@ -33,17 +33,20 @@ if __name__ == "__main__":
     
     t = np.linspace(0, 1, 500)
     ytrain =  f(t, f=2, k=3)
+    # ytrain = np.ones(t.shape[0])
     p = RegressionProblem(t, ytrain, nin=1, nout=1, nreg=0)
 
 
     e = EATMuPlusLambda(nin=p.nin, nout=p.nout, nreg=0)
-    hof, hist = e.run(50, p.eval, 100, 900, multiproc=True, verbose=True)
+    hof, hist = e.run(100, p.eval, 100, 400, multiproc=True, verbose=True)
+
 
     # graph = networkx.DiGraph(hist.genealogy_tree)
     # graph = graph.reverse()     # Make the grah top-down
     # colors = [e.toolbox.evaluate(hist.genealogy_history[i])[0] for i in graph]
     # networkx.draw(graph, node_color=colors)
     # plt.show()
+
 
     e.visualize_evolutions()
     
