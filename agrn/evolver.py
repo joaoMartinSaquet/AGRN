@@ -7,6 +7,10 @@ from deap import creator, base, tools, algorithms
 from functools import partial 
 from loguru import logger
 import seaborn as sns
+from joblib import Parallel, delayed
+
+
+
 # sns.set_style("darkgrid")  # Seaborn style
 
 from .mutation import *
@@ -47,7 +51,7 @@ class EATMuPlusLambda():
 
         self.init_deap(nin=nin, nout=nout, nreg=nreg)
 
-    def init_deap(self, nin, nout, nreg, scoop=False):
+    def init_deap(self, nin, nout, nreg):
 
         self.nin = nin
         self.nout = nout
@@ -86,12 +90,12 @@ class EATMuPlusLambda():
         # population = self.toolbox.population(n=500)  # 50 individuals
         # hof = tools.HallOfFame(1)  # Track best individual
 
-        self.stats_fit = tools.Statistics(lambda ind: ind.fitness.values[0])
-        self.stats_fit.register("avg", np.mean)
-        self.stats_fit.register("min", np.min)
-        self.stats_fit.register("max", np.max)
-        self.stats_fit.register("std", np.std)
-        self.stats_fit.register("median", np.median)
+        # self.stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
+        # self.stats_fit.register("avg", np.mean)
+        # self.stats_fit.register("min", np.min)
+        # self.stats_fit.register("max", np.max)
+        # self.stats_fit.register("std", np.std)
+        # self.stats_fit.register("median", np.median)
 
 
         stats_best_len = tools.Statistics(best_genome_length)
@@ -99,37 +103,20 @@ class EATMuPlusLambda():
 
         # self.mstats = MultiStatistics(stats_fit, stats_best_len)
 
-    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.0, mutpb = 1.0, multiproc = False, n_proc = None, verbose=True):
+    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.0, mutpb = 1.0, backend = 'threading', multiproc = False, n_proc = None, verbose=True):
         
 
         self.toolbox.register("evaluate", eval_fun)  # Fitness = sum of genome values
-        
-        if multiproc:
-            if n_proc is None:
-                n_proc = multiprocessing.cpu_count()
-            print(f"Starting {n_proc} processes")
-            pool = multiprocessing.Pool(n_proc)
-            self.toolbox.register("map", pool.map)
+        self.logbook = tools.Logbook()
+        self.logbook.header = ["gen", "avg", "min", "max", "std", "median", "best_len"]
+
             
         population = self.toolbox.population(n=mu)  # 50 individuals
         hist = tools.History()
         hof = tools.HallOfFame(1)  # Track best individual
         hist.update(population)
 
-        self.pop, self.logbook = algorithms.eaMuPlusLambda(
-            population,
-            self.toolbox,
-            lambda_ = lambda_,
-            mu=mu,
-            cxpb=cxpb,       # Crossover probability
-            mutpb=mutpb,      # Mutation probability
-            ngen=n_gen,        # Generations
-            halloffame=hof,
-            stats=self.stats_fit,
-            verbose=verbose    # Print progress
-        )
-
-        # self.pop, self.logbook = algorithms.eaMuCommaLambda(
+        # self.pop, self.logbook = algorithms.eaMuPlusLambda(
         #     population,
         #     self.toolbox,
         #     lambda_ = lambda_,
@@ -140,10 +127,71 @@ class EATMuPlusLambda():
         #     halloffame=hof,
         #     stats=self.stats_fit,
         #     verbose=verbose    # Print progress
-        # ) 
-        if multiproc: 
-            pool.close()
+        # )
 
+        # if multiproc: 
+        #     pool.close()
+        pop = self.toolbox.population(n=mu)
+        invalid_ind = [ind for ind in pop if not ind.fitness.valid]
+        # fitnesses = self.toolbox.map(self.toolbox.evaluate, invalid_ind)
+        
+        fitnesses = Parallel(n_jobs=n_proc, backend=backend)(
+                delayed(self.toolbox.evaluate)(genome) for genome in invalid_ind)
+            
+            
+        for ind, fit in zip(invalid_ind, fitnesses):
+            ind.fitness.values = fit
+
+        hist.update(pop)
+        logger.info("Gen |       Avg |       Min |       Max |     Std |     Median | BestL")
+        logger.info("-" * 70)
+        for gen in range(n_gen):
+            # Variation
+            offspring = algorithms.varOr(pop, self.toolbox, lambda_, cxpb, mutpb)
+            # offspring = algorithms.varAnd(pop, self.toolbox, lambda_, cxpb, mutpb)
+
+            # Evaluate
+            invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+            # fitnesses = self.toolbox.map(self.toolbox.evaluate, invalid_ind)
+            # eval fitness using joblib
+                    # Parallel evaluation
+            fitnesses = Parallel(n_jobs=n_proc, backend=backend)(
+                delayed(self.toolbox.evaluate)(genome) for genome in invalid_ind)
+            
+            
+            for ind, fit in zip(invalid_ind, fitnesses):
+                ind.fitness.values = fit
+
+            hof.update(pop)
+
+            
+        
+            # Selection (parents + offspring, choose best mu)
+            # pop[:] = self.toolbox.select(pop + offspring, mu)
+
+            # we select from the lambda to maintain the diversity maybe useless if we have the speciations
+            pop[:] = self.toolbox.select(offspring, mu)
+            hist.update(pop)
+
+            
+            stats = compute_stats(pop)
+            self.logbook.record(gen=gen,
+               avg=stats["avg"],
+               min=stats["min"],
+               max=stats["max"],
+               std=stats["std"],
+               median=stats["median"],
+               best_len=stats["best_len"])                
+            logger.info(format_stats(gen, stats))
+
+            # # Record stats
+            # record = self.stats_fit.compile(pop)
+            # if verbose:
+            #     logger.info(f"Gen {gen}: {record}")
+
+            # record = self.stats_fit.compile(population)
+            # if verbose:
+            #     logger.info(f"Gen {gen}: {record}")
         return hof, hist
 
 
