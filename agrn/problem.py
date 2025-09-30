@@ -3,6 +3,8 @@ import numpy as np
 from loguru import logger
 import gymnasium as gym
 from gymnasium.wrappers import NormalizeObservation
+from .utils import compute_output_concentrations_diff
+import random
 
 class   RegressionProblem:
     def __init__(self,input_features, output_features, nin, nout, nreg):
@@ -10,19 +12,19 @@ class   RegressionProblem:
         self.ytrain = output_features
 
         self.nin = nin
-        self.nout = nout * 2
+        self.nout = nout*2
         self.nreg = nreg
 
 
 
     def eval(self, genome):
         # translate the model from the genome
-        
         g = grn.GRN(genome, self.nin, self.nout)
 
         g.setup()
-        ypred = np.array(self.run_grn(g))      
-        err = np.linalg.norm(ypred-self.ytrain)
+        ypred = np.array(self.run_grn(g))
+
+        err = np.sum(abs(ypred-self.ytrain)**2)
         if np.isnan(err):
             # logger.warning("err is nan") 
             err = 1000 
@@ -33,15 +35,22 @@ class   RegressionProblem:
     def run_grn(self, grn):
 
         grn.reset()
-        grn.warmup(25)
+        # grn.warmup(25)
         ypred = []
         N = len(self.xtrain)
 
         for i in range(N):
             grn.set_input(self.xtrain[i])
-            grn.step(1)
-            o = grn.get_output()
-            ypred.append(o)
+            grn.step(10)
+            # o = grn.get_output().item()
+            o = grn.get_output().tolist()
+            # o = compute_output_concentrations_diff(o).item()
+            pred = []
+            for i in range(0, self.nout, 2):
+                pred.append(o[i] - o[i+1])
+            ypred.append(pred.copy())
+            # print(0)
+
             
         return ypred
     
@@ -142,7 +151,8 @@ class gymProblem():
     def eval(self, genome):
         
         g = grn.GRN(genome, self.nin, self.nout)
-        obs, env_info = self.env.reset(seed=1)
+        seed = random.randint(0, 1000)
+        obs, env_info = self.env.reset(seed=0)
         done = False
         g.setup()
         g.warmup(25)
@@ -153,8 +163,17 @@ class gymProblem():
 
             g.set_input(obs)
             g.step(10)
-            action = g.get_output()
+            output_concentrations = g.get_output().tolist()
 
+
+            action = []
+            len_o = len(output_concentrations)
+            for i in range(0,len_o, 2):
+                action.append(output_concentrations[i] - output_concentrations[i+1])
+                    # lo = len(output_concentrations)
+
+            # if lo%2 != 0: logger.error("Number of outputs is not even")
+            # out = output_concentrations
             if self.has_continuous_action:
                 action = action * (self.h_act - self.l_act) + self.l_act
             else :
@@ -172,7 +191,7 @@ class gymProblem():
     def vis_genome(self, genome):
 
         g = grn.GRN(genome, self.nin, self.nout)
-        obs, env_info =  self.rendering_env.reset(seed=1)
+        obs, env_info =  self.rendering_env.reset()
         done = False
         g.setup()
         g.warmup(25)

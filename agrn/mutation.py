@@ -31,15 +31,14 @@ def modify_v2(individual, betamin, betamax, deltamin, deltamax):
     for i in range(len_genome):
 
         r = np.random.uniform()
-        if r < 1/len_genome:
-            break
-        if i == 0:
-            individual[i] = np.random.uniform() * (betamax - betamin) + betamin
-        elif i == 1:
-            individual[i] = np.random.uniform() * (deltamax - deltamin) + deltamin
-        elif i > 1:
-            individual[i] = np.random.uniform()
-    index = np.random.randint(0, len_genome)
+        
+        if r < 3./len_genome:
+            if i == 0:
+                individual[i] = np.random.uniform() * (betamax - betamin) + betamin
+            elif i == 1:
+                individual[i] = np.random.uniform() * (deltamax - deltamin) + deltamin
+            elif i > 1:
+                individual[i] = np.random.uniform()
 
     # # index is beta or delta ?
     # if index == 0:

@@ -15,7 +15,7 @@ class GRN:
     betamax = 2
     deltamin = 0.2
     deltamax = 2
-    a = 2
+    a = 0
     f = 1
 
     identifiers = []
@@ -31,8 +31,8 @@ class GRN:
 
         self.setup()
 
-    def __init__(self, genome, nin = 1, nout = 1):
-        """init with random parameters"""
+    def __init__(self, genome : list, nin = 1, nout = 1):
+        """init with genomes"""
         self.genome = genome
         self.nin = nin
         self.nout = nout
@@ -42,6 +42,7 @@ class GRN:
         
 
     def random(self, nin = 1, nout = 1, nreg = 0):
+        """init with random parameters"""
 
         self.nin = nin
         self.nout = nout
@@ -104,22 +105,24 @@ class GRN:
         """ Do a pairwise concentration difference of outputs proteins : out0 = (Co0 - Co1)/(Co0 + Co1)
         """
         output_concentrations = self.concentrations[self.nin:self.nout+self.nin].copy()
-        lo = len(output_concentrations)
+        # lo = len(output_concentrations)
 
-        if lo%2 != 0: logger.error("Number of outputs is not even")
+        # if lo%2 != 0: logger.error("Number of outputs is not even")
 
-        out = np.zeros((lo//2))
-        j = 0
-        for i in range(0, lo, 2):
-            if  (output_concentrations[i] + output_concentrations[i+1]) == 0.0:
-                o = 1.0
-            else:
-                o = (output_concentrations[i] - output_concentrations[i+1]) / (output_concentrations[i] + output_concentrations[i+1])             
-            out[j] = np.clip(o, 0.0, 1.0)
-            j += 1
+        # out = np.zeros((lo//2))
+        # j = 0
+        # for i in range(0, lo, 2):
+        #     if  (output_concentrations[i] + output_concentrations[i+1]) == 0.0:
+        #         o = 1.0   
+        #     else:
+        #         o = (output_concentrations[i] - output_concentrations[i+1]) / (output_concentrations[i] + output_concentrations[i+1])             
+        #     out[j] = np.clip(o, 0.0, 1.0)
+        #     j += 1
 
-        # out = output_concentrations
-        return out
+        # # out = output_concentrations
+        return output_concentrations
+    
+
 
 @jit(nopython=True, cache=True)
 def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, nout, dt, nprot):
@@ -141,7 +144,7 @@ def step(enh_affinity_matrix, inh_affinity_matrix, concentrations, delta, nin, n
             inhibiting_factor = 0.0
             for j in range(nprot):
                 # prot is a regulator and regulated by either input prot our regulator proteins
-                if (j > nin + nout) or (j < nin) :
+                if (j > nin + nout-1) or (j < nin) :
                     
                     enhancing_factor += concentrations[j] * enh_affinity_matrix[j][i]
                     inhibiting_factor += concentrations[j] * inh_affinity_matrix[j][i]

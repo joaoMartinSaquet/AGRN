@@ -29,9 +29,12 @@ def decode_genome(genome, nin, nout):
         raise ValueError("Genome encodes fewer proteins than nin + nout.")
     beta = float(genome[0])
     delta = float(genome[1])
-    ids = genome[2 : 2 + n].copy()
-    enh = genome[2 + n : 2 + 2 * n].copy()
-    inh = genome[2 + 2 * n : 2 + 3 * n].copy()
+    end_ids = 2 + n
+    end_enh = 2 + n * 2
+
+    ids = genome[2 : end_ids].copy()
+    enh = genome[end_ids : end_enh].copy()
+    inh = genome[end_enh :].copy()
     n_reg = n - (nin + nout)
     return beta, delta, ids, enh, inh, n_reg
 
@@ -51,8 +54,7 @@ def random_genome(nin, nout, nreg, beta_min=0.2, beta_max=2, delta_min=0.2, delt
 
 
 @jit
-def protein_distance(genomeA, genomeB, k, j,
-                     id_coef=1.0, inh_coef=1.0, enh_coef=1.0):
+def genome_distance(genomeA, genomeB, nin, nout):
     """
     Compute distance between protein k of genomeA and protein j of genomeB.
     
@@ -67,22 +69,57 @@ def protein_distance(genomeA, genomeB, k, j,
     Returns:
         float : distance
     """
-    # extract sizes
-    n = (len(genomeA) - 2) // 3   # total number of proteins in genomeA
-    m = (len(genomeB) - 2) // 3   # total number of proteins in genomeB
-    
-    # --- decode genomeA ---
-    idsA   = genomeA[2:2+n]
-    enhA   = genomeA[2+n:2+2*n]
-    inhA   = genomeA[2+2*n:2+3*n]
-    
-    # --- decode genomeB ---
-    idsB   = genomeB[2:2+m]
-    enhB   = genomeB[2+m:2+2*m]
-    inhB   = genomeB[2+2*m:2+3*m]
-    
-    # --- compute distance ---
-    dist = (abs(idsA[k] - idsB[j]) * id_coef +
-            abs(inhA[k] - inhB[j]) * inh_coef +
-            abs(enhA[k] - enhB[j]) * enh_coef)
+
+    betaA, deltaA, idsA, enhsA, inhsA, n_regA = decode_genome(genomeA, nin, nout)
+    betaB, deltaB, idsB, enhsB, inhsB, n_regB = decode_genome(genomeB, nin, nout)
+
+    la = len(genomeA)
+    lb = len(genomeB)
+
+    Dbeta = abs(betaA - betaB)/2 # normaly we should divide by betamin - betamax...
+    Ddelta = abs(deltaA - deltaB)/2
+
+    max_size = max(la, lb)
+
+    dout = 0
+    din = 0
+    # compute Din and Dout 
+    for i in range(nin+nout):
+        idA = idsA[i]
+        idB = idsB[i]
+        enhA = enhsA[i]
+        enhB = enhsB[i]
+        inhA = inhsA[i]
+        inhB = inhsB[i]
+        
+        dist = protein_distance(idA, enhA, inhA, idB, enhB, inhB)
+        if i < nin:
+            din += dist
+        else:
+            dout += dist
+
+    Dreg = 0
+    for i in range(nin+nout, la):
+        dists = []
+        for j in range(nin+nout, lb):
+            idA = idsA[i]
+            idB = idsB[j]
+            enhA = enhsA[i]
+            enhB = enhsB[j]
+            inhA = inhsA[i]
+            inhB = inhsB[j]
+            d = protein_distance(idA, enhA, inhA, idB, enhB, inhB)
+            dists.append(d)
+        Dreg += min(dists)
+
+    dist = (din + dout + Dreg + Dbeta + Ddelta)/(max_size + 2)
     return dist
+
+
+def protein_distance(ids1, enh1, inh1, ids2, enh2, inh2,
+                     id_coef=0.75, inh_coef=0.25, enh_coef=0.25):
+    """Compute distance between protein k from genome1 and protein j from genome2
+    """
+    return (abs(ids1 - ids2) * id_coef +
+            abs(inh1 - inh2) * inh_coef +
+            abs(enh1 - enh2) * enh_coef)

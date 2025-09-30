@@ -11,6 +11,7 @@ def f(t, f: float = 1, k: int = 3):
         t (float): time
         f(float, optional): frequency. Defaults to 1. 
         k (int, optional): degree of decomposition. Defaults to 2.
+2025-09-24 16:45:53.167 | INFO     | agrn.evolver:run:184 - 194 |    -32.517 |    -37.889 |    -19.800 |    4.415 |    -33.712 |    50
 
     Returns:
         values
@@ -38,7 +39,7 @@ if __name__ == "__main__":
 
 
     e = EATMuPlusLambda(nin=p.nin, nout=p.nout, nreg=0)
-    hof, hist = e.run(100, p.eval, 100, 400, multiproc=True, verbose=True)
+    hof, hist = e.run(10, p.eval, 50, 1000, multiproc=True, verbose=True)
 
 
     # graph = networkx.DiGraph(hist.genealogy_tree)
@@ -52,9 +53,12 @@ if __name__ == "__main__":
     
     print("best len : ", len(hof[0]))
     print("best : ", hof[0])
+    
     g = GRN(hof[0], p.nin, p.nout)
+    yg = p.run_grn(g)
 
+    print("np.sum(abs(yg - ytrain))", np.sum(abs(yg - ytrain)))
     # plt.plot(t, ytrain)
-    plt.plot(t, p.run_grn(g))
+    plt.plot(t, yg)
     plt.plot(t, ytrain)
     plt.show()

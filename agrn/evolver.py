@@ -75,8 +75,8 @@ class EATMuPlusLambda():
         self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
 
         # 3. Define genetic operators
-        # self.toolbox.register("mate", cx, nin=nin, nout=nout)  # Crossover (blend parents) aligned crossover
-        self.toolbox.register("mate", tools.cxBlend, alpha=10)  # Crossover (blend parents) { doesnt  work at his get some negative and outside the range values}
+        self.toolbox.register("mate", cx, nin=nin, nout=nout)  # Crossover (blend parents) aligned crossover
+        # self.toolbox.register("mate", tools.cxBlend, alpha=10)  # Crossover (blend parents) { doesnt  work at his get some negative and outside the range values}
         # self
         
         self.toolbox.register("mutate", mutate, nin=nin, nout=nout, betamin=self.betamin, betamax=self.betamax, deltamin=self.deltamin, deltamax=self.deltamax)  # Mutation
@@ -103,7 +103,7 @@ class EATMuPlusLambda():
 
         # self.mstats = MultiStatistics(stats_fit, stats_best_len)
 
-    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.0, mutpb = 1.0, backend = 'threading', multiproc = False, n_proc = None, verbose=True):
+    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.25, mutpb = 0.75, comma = False, backend = 'threading', multiproc = False, n_proc = None, verbose=True):
         
 
         self.toolbox.register("evaluate", eval_fun)  # Fitness = sum of genome values
@@ -116,21 +116,6 @@ class EATMuPlusLambda():
         hof = tools.HallOfFame(1)  # Track best individual
         hist.update(population)
 
-        # self.pop, self.logbook = algorithms.eaMuPlusLambda(
-        #     population,
-        #     self.toolbox,
-        #     lambda_ = lambda_,
-        #     mu=mu,
-        #     cxpb=cxpb,       # Crossover probability
-        #     mutpb=mutpb,      # Mutation probability
-        #     ngen=n_gen,        # Generations
-        #     halloffame=hof,
-        #     stats=self.stats_fit,
-        #     verbose=verbose    # Print progress
-        # )
-
-        # if multiproc: 
-        #     pool.close()
         pop = self.toolbox.population(n=mu)
         invalid_ind = [ind for ind in pop if not ind.fitness.valid]
         # fitnesses = self.toolbox.map(self.toolbox.evaluate, invalid_ind)
@@ -162,16 +147,22 @@ class EATMuPlusLambda():
             for ind, fit in zip(invalid_ind, fitnesses):
                 ind.fitness.values = fit
 
-            hof.update(pop)
-
             
         
-            # Selection (parents + offspring, choose best mu)
-            # pop[:] = self.toolbox.select(pop + offspring, mu)
+
+
+
+            if not comma:
+                # we select from the mu and pop we then maintain high competitiveness
+                pop[:] = self.toolbox.select(pop + offspring, mu)
 
             # we select from the lambda to maintain the diversity maybe useless if we have the speciations
-            pop[:] = self.toolbox.select(offspring, mu)
+            else:
+                pop[:] = self.toolbox.select(offspring, mu)
             hist.update(pop)
+            
+            best_ind = tools.selBest(pop, 1)[0]
+            hof.update(pop)
 
             
             stats = compute_stats(pop)
@@ -192,7 +183,7 @@ class EATMuPlusLambda():
             # record = self.stats_fit.compile(population)
             # if verbose:
             #     logger.info(f"Gen {gen}: {record}")
-        return hof, hist
+        return hof, hist, best_ind
 
 
     def visualize_evolutions(self):
