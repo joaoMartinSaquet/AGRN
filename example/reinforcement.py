@@ -18,10 +18,9 @@ if __name__ == "__main__":
     p = gymProblem(env_name, start_nreg=0)
     
     e = EATMuPlusLambda(nin=p.nin, nout=p.nout, nreg=0)
-    alg, hist, best = e.run(10, p.eval, 500, 500, multiproc=True, verbose=True)
+    hof, hist = e.run(50, p.eval, 10, 200, multiproc=True, verbose=True, comma=True)
     e.visualize_evolutions()
-    p.vis_genome(alg[0])
+    p.vis_genome(hof[0])
     
-    print("best len : ", len(alg[0]))
-    print("best : ", alg[0][0])
+    print("best len : ", len(hof[0]))
     plt.show()

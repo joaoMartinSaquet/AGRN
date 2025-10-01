@@ -85,25 +85,10 @@ class EATMuPlusLambda():
         # self.toolbox.register("select", tools.selTournament, tournsize=3)  # Selection
         self.toolbox.register("select", tools.selSPEA2)  # Selection
         
-    
-
-        # population = self.toolbox.population(n=500)  # 50 individuals
-        # hof = tools.HallOfFame(1)  # Track best individual
-
-        # self.stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
-        # self.stats_fit.register("avg", np.mean)
-        # self.stats_fit.register("min", np.min)
-        # self.stats_fit.register("max", np.max)
-        # self.stats_fit.register("std", np.std)
-        # self.stats_fit.register("median", np.median)
-
-
-        stats_best_len = tools.Statistics(best_genome_length)
-        stats_best_len.register('best len', lambda x : x)
-
+        self.stats = Statistics()
         # self.mstats = MultiStatistics(stats_fit, stats_best_len)
 
-    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.25, mutpb = 0.75, comma = False, backend = 'threading', multiproc = False, n_proc = None, verbose=True):
+    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.25, mutpb = 0.75, comma = False, log_path="..", log_name = "stat_history", backend = 'threading', multiproc = False, n_proc = None, verbose=True):
         
 
         self.toolbox.register("evaluate", eval_fun)  # Fitness = sum of genome values
@@ -126,31 +111,25 @@ class EATMuPlusLambda():
             
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
+        
+        self.stats.compute_stats(pop, -1)
+        self.stats.print_header()
+        self.stats.print()
 
         hist.update(pop)
-        logger.info("Gen |       Avg |       Min |       Max |     Std |     Median | BestL")
-        logger.info("-" * 70)
         for gen in range(n_gen):
             # Variation
             offspring = algorithms.varOr(pop, self.toolbox, lambda_, cxpb, mutpb)
-            # offspring = algorithms.varAnd(pop, self.toolbox, lambda_, cxpb, mutpb)
 
             # Evaluate
             invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-            # fitnesses = self.toolbox.map(self.toolbox.evaluate, invalid_ind)
-            # eval fitness using joblib
-                    # Parallel evaluation
+
             fitnesses = Parallel(n_jobs=n_proc, backend=backend)(
                 delayed(self.toolbox.evaluate)(genome) for genome in invalid_ind)
             
             
             for ind, fit in zip(invalid_ind, fitnesses):
                 ind.fitness.values = fit
-
-            
-        
-
-
 
             if not comma:
                 # we select from the mu and pop we then maintain high competitiveness
@@ -165,34 +144,21 @@ class EATMuPlusLambda():
             hof.update(pop)
 
             
-            stats = compute_stats(pop)
-            self.logbook.record(gen=gen,
-               avg=stats["avg"],
-               min=stats["min"],
-               max=stats["max"],
-               std=stats["std"],
-               median=stats["median"],
-               best_len=stats["best_len"])                
-            logger.info(format_stats(gen, stats))
+            self.stats.compute_stats(pop, gen)
+            self.stats.print()
 
-            # # Record stats
-            # record = self.stats_fit.compile(pop)
-            # if verbose:
-            #     logger.info(f"Gen {gen}: {record}")
+        self.stats.dump(log_path, "stats.json")
+        return hof, hist 
 
-            # record = self.stats_fit.compile(population)
-            # if verbose:
-            #     logger.info(f"Gen {gen}: {record}")
-        return hof, hist, best_ind
 
 
     def visualize_evolutions(self):
-        avg_fitness = [r['avg'] for r in self.logbook]
-        max_fitness = [r['max'] for r in self.logbook]
-        min_fitness = [r['min'] for r in self.logbook]
-        std_fitness = [r['std'] for r in self.logbook]
+        avg_fitness = np.array(self.stats.statDict['avg_fitness'])
+        max_fitness = np.array(self.stats.statDict['best_fitness'])
+        min_fitness = np.array(self.stats.statDict['min_fitness'])
 
 
+        eps = np.max(max_fitness) - np.min(min_fitness)
         # Example arrays from your logbook
         # avg_fitness, max_fitness, min_fitness, std_fitness
 
@@ -200,11 +166,11 @@ class EATMuPlusLambda():
 
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        # Fill area for standard deviation around the mean
-        ax.fill_between(gens,
-                        np.array(avg_fitness) - np.array(std_fitness),
-                        np.array(avg_fitness) + np.array(std_fitness),
-                        color='gray', alpha=0.3, label='Std Dev')
+        # # Fill area for standard deviation around the mean
+        # ax.fill_between(gens,
+        #                max_fitness,
+        #                min_fitness,
+        #                 color='gray', alpha=0.3, label='Std Dev')
 
         # Plot avg, max, min with different colors and line styles
         ax.plot(gens, avg_fitness, color='blue', linewidth=2, label='Average Fitness')
@@ -216,8 +182,14 @@ class EATMuPlusLambda():
         ax.set_ylabel('Fitness', fontsize=14)
         ax.set_title('Evolution of Fitness over Generations', fontsize=16, fontweight='bold')
         ax.legend(fontsize=12)
-        ax.grid(True, linestyle='--', alpha=0.5)
-
+        
+        ax.grid(True, which='both')   
         # Optional: tighter layout
         plt.tight_layout()
         plt.show()
+
+    
+    def dumps_logs(self):
+
+
+        return self.logbook

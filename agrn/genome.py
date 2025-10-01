@@ -115,7 +115,7 @@ def genome_distance(genomeA, genomeB, nin, nout):
     dist = (din + dout + Dreg + Dbeta + Ddelta)/(max_size + 2)
     return dist
 
-
+@jit
 def protein_distance(ids1, enh1, inh1, ids2, enh2, inh2,
                      id_coef=0.75, inh_coef=0.25, enh_coef=0.25):
     """Compute distance between protein k from genome1 and protein j from genome2

@@ -60,9 +60,13 @@ def cx(ind1, ind2, nin, nout, threshold=0.1):
         chosen_parent, chosen_range = (1, pA_remaining) if np.random.random() < prob else (2, pB_range)
         for idx in chosen_range:
             if chosen_parent == 1:
-                child_ids.append(idsA[idx]); child_enh.append(enhA[idx]); child_inh.append(inhA[idx])
+                child_ids.append(idsA[idx])
+                child_enh.append(enhA[idx])
+                child_inh.append(inhA[idx])
             else:
-                child_ids.append(idsB[idx]); child_enh.append(enhB[idx]); child_inh.append(inhB[idx])
+                child_ids.append(idsB[idx])
+                child_enh.append(enhB[idx])
+                child_inh.append(inhB[idx])
 
         # 4. Dynamics
         beta = betaA if np.random.random() < 0.5 else betaB
