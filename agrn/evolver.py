@@ -26,19 +26,18 @@ import multiprocessing
     
 class EATMuPlusLambda():
 
-    def __init__(self, nin, nout, nreg,
+    def __init__(self, nin, nout, nreg, eval_fun, log_interval = 10,
                  beta_min=0.2, beta_max=2, delta_min=0.2, delta_max=2,
                  crossover_threshold = 0.5, mutation_rate = 0.25, crossover_rate = 0.5,
-                 mut_add_prob = 0.5, mut_del_prob = 0.25, mut_mod_prob = 0.25):
+                 mut_add_prob = 0.5, mut_del_prob = 0.25, mut_mod_prob = 0.25,
+                 backend = "threading", nproc = None, 
+                 log_path="", log_name = "stat_history"):
         
         # grn parameters
-
         self.betamax = beta_min
         self.betamin = beta_max
         self.deltamax = delta_max
         self.deltamin = delta_min
-
-
 
         self.crossover_threshold = crossover_threshold
 
@@ -49,22 +48,24 @@ class EATMuPlusLambda():
         self.mut_del_prob = mut_del_prob
         self.mut_mod_prob = mut_mod_prob
 
-        self.init_deap(nin=nin, nout=nout, nreg=nreg)
+        self.log_name = log_name
+        self.log_path = log_path
+        self.backend = backend
+        self.nproc = nproc
+        self.log_interval = log_interval
 
-    def init_deap(self, nin, nout, nreg):
+        self.init_deap(eval_fun=eval_fun, nin=nin, nout=nout, nreg=nreg)
 
+    def init_deap(self,eval_fun, nin, nout, nreg):
         self.nin = nin
         self.nout = nout
         self.nreg = nreg
-
-
-        # problem = p.FrenchFlagProblem(nin=nin, nout=nout, nreg=nreg)
 
         # 1. Define the fitness and individual types
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))  # Maximize fitness
         creator.create("Individual", list, fitness=creator.FitnessMax)
 
-
+        
         def init_indiv(nin, nout, start_nreg):
             return random_genome(nin, nout, start_nreg)
 
@@ -84,50 +85,56 @@ class EATMuPlusLambda():
 
         # self.toolbox.register("select", tools.selTournament, tournsize=3)  # Selection
         self.toolbox.register("select", tools.selSPEA2)  # Selection
+
+        self.toolbox.register("evaluate", eval_fun) 
         
         self.stats = Statistics()
         # self.mstats = MultiStatistics(stats_fit, stats_best_len)
 
-    def run(self,n_gen, eval_fun, mu, lambda_, cxpb = 0.25, mutpb = 0.75, comma = False, log_path="..", log_name = "stat_history", backend = 'threading', multiproc = False, n_proc = None, verbose=True):
+    def run(self, n_gen, mu, lambda_, cxpb = 0.25, mutpb = 0.75, comma = False):
         
-
-        self.toolbox.register("evaluate", eval_fun)  # Fitness = sum of genome values
         self.logbook = tools.Logbook()
         self.logbook.header = ["gen", "avg", "min", "max", "std", "median", "best_len"]
 
             
         population = self.toolbox.population(n=mu)  # 50 individuals
-        hist = tools.History()
-        hof = tools.HallOfFame(1)  # Track best individual
-        hist.update(population)
+        self.hist_run = tools.History()
+        self.hof = tools.HallOfFame(1)  # Track best individual
+        self.hist_run.update(population)
 
         pop = self.toolbox.population(n=mu)
-        invalid_ind = [ind for ind in pop if not ind.fitness.valid]
-        # fitnesses = self.toolbox.map(self.toolbox.evaluate, invalid_ind)
         
-        fitnesses = Parallel(n_jobs=n_proc, backend=backend)(
+        self.stats.print_header()
+
+
+        self.hist_run.update(pop)
+        self.evolve_populations(pop, n_gen, mu, lambda_, comma, cxpb, mutpb)
+        self.stats.dump(self.log_path, self.log_name)
+        return self.hof, self.hist_run 
+
+    def evolve_populations(self, pop, ngen, mu, lambda_, comma, cxpb, mutpb):
+        
+        invalid_ind = [ind for ind in pop if not ind.fitness.valid]
+        fitnesses = Parallel(n_jobs=self.nproc, backend=self.backend)(
                 delayed(self.toolbox.evaluate)(genome) for genome in invalid_ind)
-            
-            
+
+
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
-        
-        self.stats.compute_stats(pop, -1)
-        self.stats.print_header()
-        self.stats.print()
 
-        hist.update(pop)
-        for gen in range(n_gen):
+        self.stats.compute_stats(pop, -1)
+        self.stats.print()
+        for gen in range(ngen):
             # Variation
             offspring = algorithms.varOr(pop, self.toolbox, lambda_, cxpb, mutpb)
 
             # Evaluate
             invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
 
-            fitnesses = Parallel(n_jobs=n_proc, backend=backend)(
+            fitnesses = Parallel(n_jobs=self.nproc, backend=self.backend)(
                 delayed(self.toolbox.evaluate)(genome) for genome in invalid_ind)
             
-            
+
             for ind, fit in zip(invalid_ind, fitnesses):
                 ind.fitness.values = fit
 
@@ -138,17 +145,16 @@ class EATMuPlusLambda():
             # we select from the lambda to maintain the diversity maybe useless if we have the speciations
             else:
                 pop[:] = self.toolbox.select(offspring, mu)
-            hist.update(pop)
+            self.hist_run.update(pop)
             
-            best_ind = tools.selBest(pop, 1)[0]
-            hof.update(pop)
+            self.hof.update(pop)
 
-            
+                
             self.stats.compute_stats(pop, gen)
-            self.stats.print()
+            if gen % self.log_interval == 0 and gen > 0:  # Log0log_interval
+                self.stats.print()
 
-        self.stats.dump(log_path, "stats.json")
-        return hof, hist 
+        return self.hof, self.hist_run
 
 
 

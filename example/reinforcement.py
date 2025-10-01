@@ -17,8 +17,10 @@ if __name__ == "__main__":
     print("training on : ", env_name)
     p = gymProblem(env_name, start_nreg=0)
     
-    e = EATMuPlusLambda(nin=p.nin, nout=p.nout, nreg=0)
-    hof, hist = e.run(50, p.eval, 10, 200, multiproc=True, verbose=True, comma=True)
+    e = EATMuPlusLambda(nin=p.nin, nout=p.nout, nreg=0, eval_fun=p.eval)
+    
+    hof, hist = e.run(1, 10, 200)
+
     e.visualize_evolutions()
     p.vis_genome(hof[0])
     

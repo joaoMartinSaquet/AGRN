@@ -3,6 +3,16 @@ import numpy as np
 from loguru import logger
 import json
 
+widths = {
+        "generation": 10,
+        "best_indiv": 2,
+        "best_fitness": 18,
+        "avg_fitness": 18,
+        "min_fitness": 18,
+        "best_length": 12
+}
+
+
 class Statistics:
     def __init__(self):
         self.statDict = {"generation": [], "best_indiv": [], 
@@ -18,22 +28,23 @@ class Statistics:
         self.statDict["best_length"].append(best_length)
 
     def print_header(self):
-        stat_string = f""
-        for fields in self.statDict:
-            stat_string += f"{fields} | \t"
-        
-        logger.info(stat_string)
-        logger.info("-" * 70)
+        header_str = " | ".join([f"{name:<{width}}" for name, width in widths.items()])
+        separator = "-" * len(header_str)
+
+        logger.info(header_str)
+        logger.info(separator)
 
 
     def print(self):
-        stat_string = f""
-        for fields in self.statDict:
-            if fields == "best_indiv":
-                stat_string += f" | \t"
-            else:
-                stat_string += f"{self.statDict[fields][-1]} | \t"
-            # logger.info(f"{fields} : {self.statDict[fields]}")
+        stat_string = (
+            f"{self.statDict['generation'][-1]:<{widths['generation']}} | "
+            f"{'':<{widths['best_indiv']}} | "
+            f"{self.statDict['best_fitness'][-1]:<{widths['best_fitness']}} | "
+            f"{self.statDict['avg_fitness'][-1]:<{widths['avg_fitness']}} | "
+            f"{self.statDict['min_fitness'][-1]:<{widths['min_fitness']}} | "
+            f"{self.statDict['best_length'][-1]:<{widths['best_length']}} | "
+        )
+# logger.info(f"{fields} : {self.statDict[fields]}")
         logger.info(stat_string)
 
     def clear(self):
